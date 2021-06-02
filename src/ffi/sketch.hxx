@@ -20,7 +20,7 @@
 #define LIBSMCE_RS_SKETCH_HXX
 
 #include <rust/cxx.h>
-#include "SMCE/Sketch.hpp"
+#include <SMCE/Sketch.hpp>
 
 struct Uuid;
 

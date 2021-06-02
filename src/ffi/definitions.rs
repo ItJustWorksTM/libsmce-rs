@@ -16,8 +16,6 @@
  *
  */
 
-use std::pin::Pin;
-
 pub use ffi::*;
 
 #[cxx::bridge]
@@ -58,7 +56,6 @@ mod ffi {
     }
 
     unsafe extern "C++" {
-        // smce::OpaqueSketch
         include!("sketch.hxx");
 
         pub type OpaqueSketch;

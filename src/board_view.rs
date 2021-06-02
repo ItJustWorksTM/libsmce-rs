@@ -16,9 +16,8 @@
  *
  */
 
-use std::error::Error;
 use std::io;
-use std::io::{BufReader, ErrorKind, Read, Write};
+use std::io::{Read, Write};
 use std::marker::PhantomData;
 
 use cxx::UniquePtr;
@@ -164,7 +163,7 @@ pub struct FrameBuffer<'a, 'b, 'c> {
 
 impl FrameBuffer<'_, '_, '_> {
     fn inner(&mut self) -> Pin<&mut OpaqueFrameBuffer> {
-        unsafe { self.fb.pin_mut() }
+        self.fb.pin_mut()
     }
 
     pub fn needs_horizontal_flip(&mut self) -> bool {

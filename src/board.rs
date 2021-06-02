@@ -39,7 +39,7 @@ pub struct Board<'a, 'b> {
 
 impl BoardVendor {
     fn inner_mut(&mut self) -> Pin<&mut OpaqueBoard> {
-        unsafe { self.internal.pin_mut() }
+        self.internal.pin_mut()
     }
 
     pub fn new(config: BoardConfig) -> Self {
@@ -156,7 +156,6 @@ mod test {
     use crate::board::BoardVendor;
     use crate::board_config::BoardConfig;
     use crate::sketch::Sketch;
-
     #[test]
     fn basics() {
         let mut vendor = BoardVendor::new(BoardConfig::default());

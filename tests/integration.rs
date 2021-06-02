@@ -1,21 +1,22 @@
 use std::cell::{Cell, RefCell};
 use std::error::Error;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use libsmce_rs::board::{BoardVendor, Status};
 use libsmce_rs::board_config::BoardConfig;
 use libsmce_rs::board_view::Link;
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::toolchain::Toolchain;
-use std::time::Duration;
 
 #[test]
 fn test_compile() -> Result<(), Box<dyn Error>> {
-    let mut tc = Toolchain::new(Path::new(
-        "/home/ruthgerd/.local/share/godot/app_userdata/SMCE",
-    ))
-    .unwrap();
+    let mut smce_resources = PathBuf::from(std::env::var("OUT_DIR")?);
+    smce_resources.push("libsmce-rs/cmake");
+
+    let mut tc = Toolchain::new(&smce_resources).unwrap();
+
     let mut sketch = Sketch::new(Path::new("./tests/sketches/echo/echo.ino")).unwrap();
 
     assert!(

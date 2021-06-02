@@ -17,12 +17,39 @@
  */
 
 use std::fs;
-use std::path::Path;
-
-use cxx_build;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::str::from_utf8;
 
 fn main() {
-    let files = vec![
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+
+    let mut cmake_out = out_dir.clone();
+    cmake_out.push("libsmce-rs/cmake");
+
+    fs::create_dir_all(&out_dir).unwrap();
+
+    let cmake_out_str = cmake_out.to_str().unwrap();
+
+    let configure_output = Command::new("cmake")
+        .args(&["-B", cmake_out_str])
+        .envs(std::env::vars())
+        .output()
+        .unwrap();
+
+    let stdout = from_utf8(&configure_output.stderr).unwrap();
+
+    let mut include_dirs = vec!["src/ffi"];
+    let mut cargo_directives = vec![];
+    for line in stdout.lines() {
+        if line.starts_with("cargo:") {
+            cargo_directives.push(line);
+        } else if let Some(path) = line.strip_prefix("header:") {
+            include_dirs.push(path);
+        }
+    }
+
+    let source_files = vec![
         "src/ffi/sketch.cxx",
         "src/ffi/uuid.cxx",
         "src/ffi/board_config.cxx",
@@ -30,21 +57,29 @@ fn main() {
         "src/ffi/toolchain.cxx",
         "src/ffi/board_view.cxx",
     ];
+
     cxx_build::bridge("src/ffi/definitions.rs")
-        .include("libsmce/include")
-        .include("src/ffi")
-        .files(&files)
+        .includes(&include_dirs)
+        .files(&source_files)
         .flag_if_supported("-std=c++20")
-        .compile("libsmce-rs");
+        .compile("smce-rs");
+
+    for directive in cargo_directives {
+        println!("{}", directive);
+    }
+
+    let mut resources_dir = cmake_out.clone();
+    resources_dir.push("RtResources");
+
+    println!(
+        "cargo:SMCE_RESOURCES_DIR={}",
+        resources_dir.to_str().unwrap()
+    );
 
     for path in fs::read_dir(&Path::new("src/ffi")).unwrap() {
         let path = path.unwrap();
         println!("cargo:rerun-if-changed={}", path.path().display());
     }
 
-    println!("cargo:rustc-link-search=native=libsmce/lib");
-    println!("cargo:rustc-link-search=native=/usr/lib");
-
-    println!("cargo:rustc-link-lib=static=SMCE_static");
-    println!("cargo:rustc-link-lib=static=boost_filesystem");
+    println!("cargo:rerun-if-changed=CMakeLists.txt");
 }
