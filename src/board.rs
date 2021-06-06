@@ -55,6 +55,10 @@ pub struct BoardHandle<'a> {
 type ExitCode = i32;
 
 impl Board {
+    pub fn new() -> Self {
+        Self { internal: None }
+    }
+
     pub fn start(
         &mut self,
         config: &BoardConfig,

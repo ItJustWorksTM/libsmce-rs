@@ -16,25 +16,19 @@
  *
  */
 
-use crate::ffi::{board_config_new, OpaqueBoardConfig};
-use cxx::UniquePtr;
 use std::path::PathBuf;
+use std::ptr::null;
+
+use cxx::UniquePtr;
+
+use crate::ffi::{
+    board_config_new, FrameBufferV, GpioDriverV, OpaqueBoardConfig, SecureDigitalStorageV,
+    UartChannelV,
+};
+pub use crate::ffi::{AnalogDriver, DigitalDriver};
 
 #[derive(Debug, Default, Clone)]
-pub struct DigitalDriver {
-    pub read: bool,
-    pub write: bool,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct AnalogDriver {
-    pub read: bool,
-    pub write: bool,
-    // size: usize,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct GpioDrivers {
+pub struct GpioDriver {
     pub pin_id: u16,
     pub digital_driver: Option<DigitalDriver>,
     pub analog_driver: Option<AnalogDriver>,
@@ -71,8 +65,8 @@ pub struct SecureDigitalStorage {
 
 #[derive(Debug, Clone)]
 pub enum FrameBufferDirection {
-    IN,
-    OUT,
+    In,
+    Out,
 }
 
 #[derive(Debug, Clone)]
@@ -81,10 +75,10 @@ pub struct FrameBuffer {
     pub direction: FrameBufferDirection,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct BoardConfig {
     pub pins: Vec<u16>,
-    pub gpio_drivers: Vec<GpioDrivers>,
+    pub gpio_drivers: Vec<GpioDriver>,
     pub uart_channels: Vec<UartChannel>,
     pub sd_cards: Vec<SecureDigitalStorage>,
     pub frame_buffers: Vec<FrameBuffer>,
@@ -92,13 +86,74 @@ pub struct BoardConfig {
 
 impl BoardConfig {
     pub(crate) fn as_native(&self) -> UniquePtr<OpaqueBoardConfig> {
-        unsafe { board_config_new() }
+        unsafe {
+            board_config_new(
+                &self.pins,
+                self.gpio_drivers
+                    .iter()
+                    .map(|t| GpioDriverV {
+                        pin_id: t.pin_id,
+                        digital_driver: t.digital_driver.as_ref().map_or(null(), |t| t),
+                        analog_driver: t.analog_driver.as_ref().map_or(null(), |t| t),
+                    })
+                    .collect(),
+                self.uart_channels
+                    .iter()
+                    .map(|t| UartChannelV {
+                        rx_pin_override: t.rx_pin_override.as_ref().map_or(null(), |t| t),
+                        tx_pin_override: t.tx_pin_override.as_ref().map_or(null(), |t| t),
+                        baud_rate: t.baud_rate,
+                        rx_buffer_length: t.rx_buffer_length,
+                        tx_buffer_length: t.tx_buffer_length,
+                        flushing_threshold: t.flushing_threshold,
+                    })
+                    .collect(),
+                self.sd_cards
+                    .iter()
+                    .map(|t| SecureDigitalStorageV {
+                        cspin: t.cspin,
+                        root_dir: t.root_dir.to_str().unwrap(),
+                    })
+                    .collect(),
+                self.frame_buffers
+                    .iter()
+                    .map(|t| FrameBufferV {
+                        key: t.key,
+                        direction: match t.direction {
+                            FrameBufferDirection::In => true,
+                            FrameBufferDirection::Out => false,
+                        },
+                    })
+                    .collect(),
+            )
+        }
     }
 }
 
 impl Into<UniquePtr<OpaqueBoardConfig>> for BoardConfig {
     // TODO: Actually implement
     fn into(self) -> UniquePtr<OpaqueBoardConfig> {
-        unsafe { board_config_new() }
+        UniquePtr::null()
     }
 }
+
+impl Default for DigitalDriver {
+    fn default() -> Self {
+        Self {
+            read: true,
+            write: true,
+        }
+    }
+}
+
+impl Default for AnalogDriver {
+    fn default() -> Self {
+        Self {
+            read: true,
+            write: true,
+        }
+    }
+}
+
+#[test]
+fn build() {}

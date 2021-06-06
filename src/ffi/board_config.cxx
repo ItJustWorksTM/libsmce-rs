@@ -16,25 +16,67 @@
  *
  */
 
+#include <optional>
+#include <vector>
+#include "libsmce-rs/src/ffi/definitions.rs"
 #include "board_config.hxx"
 
-auto board_config_new() -> std::unique_ptr<OpaqueBoardConfig> {
-    return std::make_unique<OpaqueBoardConfig>(smce::BoardConfig{
-        .pins = {0, 1},
-        .gpio_drivers =
-            {
-                smce::BoardConfig::GpioDrivers{
-                    .pin_id = 0,
-                    .digital_driver = smce::BoardConfig::GpioDrivers::DigitalDriver{.board_read = true,
-                                                                                    .board_write = true},
-                    .analog_driver = smce::BoardConfig::GpioDrivers::AnalogDriver{.board_read = true,
-                                                                                  .board_write = true}},
-                smce::BoardConfig::GpioDrivers{
-                    .pin_id = 1,
-                    .digital_driver = smce::BoardConfig::GpioDrivers::DigitalDriver{.board_read = true,
-                                                                                    .board_write = true},
-                    .analog_driver = smce::BoardConfig::GpioDrivers::AnalogDriver{.board_read = true,
-                                                                                  .board_write = true}},
-            },
-        .uart_channels = {{}}});
+auto board_config_new(const rust::Vec<uint16_t>& pins, rust::Vec<GpioDriverV> gpio_drivers,
+                      rust::Vec<UartChannelV> uart_channels, rust::Vec<SecureDigitalStorageV> sd_cards,
+                      rust::Vec<FrameBufferV> frame_buffers) -> std::unique_ptr<OpaqueBoardConfig> {
+    auto ret = smce::BoardConfig{.uart_channels = {{}}};
+    std::copy(pins.begin(), pins.end(), std::back_inserter(ret.pins));
+
+    std::transform(gpio_drivers.begin(), gpio_drivers.end(), std::back_inserter(ret.gpio_drivers),
+                   [](const auto& gpio) {
+                       auto ret = smce::BoardConfig::GpioDrivers{};
+
+                       ret.pin_id = gpio.pin_id;
+
+                       if (gpio.digital_driver) {
+                           ret.digital_driver = {gpio.digital_driver->read, gpio.digital_driver->write};
+                       }
+
+                       if (gpio.analog_driver) {
+                           ret.analog_driver = {gpio.analog_driver->read, gpio.analog_driver->write};
+                       }
+
+                       return ret;
+                   });
+
+    std::transform(uart_channels.begin(), uart_channels.end(), std::back_inserter(ret.uart_channels),
+                   [](const auto& uart) {
+                       auto ret = smce::BoardConfig::UartChannel{};
+
+                       if (uart.rx_pin_override)
+                           ret.rx_pin_override = *uart.rx_pin_override;
+
+                       if (uart.tx_pin_override)
+                           ret.tx_pin_override = *uart.tx_pin_override;
+
+                       ret.baud_rate = uart.baud_rate;
+                       ret.rx_buffer_length = uart.rx_buffer_length;
+                       ret.tx_buffer_length = uart.tx_buffer_length;
+                       ret.flushing_threshold = uart.flushing_threshold;
+
+                       return ret;
+                   });
+
+    std::transform(sd_cards.begin(), sd_cards.end(), std::back_inserter(ret.sd_cards), [](const auto& sd) {
+        auto ret = smce::BoardConfig::SecureDigitalStorage{};
+        ret.cspin = sd.cspin;
+        ret.root_dir = std::string{sd.root_dir.data(), sd.root_dir.size()};
+        return ret;
+    });
+
+    std::transform(frame_buffers.begin(), frame_buffers.end(), std::back_inserter(ret.frame_buffers),
+                   [](const auto& fb) {
+                       auto ret = smce::BoardConfig::FrameBuffer{};
+                       ret.key = fb.key;
+                       ret.direction = fb.direction ? smce::BoardConfig::FrameBuffer::Direction::in
+                                                    : smce::BoardConfig::FrameBuffer::Direction::out;
+                       return ret;
+                   });
+
+    return std::make_unique<OpaqueBoardConfig>(ret);
 }

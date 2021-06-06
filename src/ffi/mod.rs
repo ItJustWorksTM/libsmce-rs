@@ -16,6 +16,8 @@
  *
  */
 
+pub use definitions::{AnalogDriver, DigitalDriver};
+
 pub(crate) use definitions::*;
 
-mod definitions;
+pub mod definitions;

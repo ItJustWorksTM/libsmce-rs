@@ -16,10 +16,10 @@
  *
  */
 
-pub(crate) use ffi::*;
+pub use ffi::*;
 
 #[cxx::bridge]
-mod ffi {
+pub mod ffi {
 
     pub(crate) struct ExitInfo {
         pub(crate) exited: bool,
@@ -55,6 +55,7 @@ mod ffi {
         Generic = 255,
     }
 
+    // Sketch Config
     pub(crate) struct FreestandingLibraryV<'a> {
         pub include_dir: &'a str,
         pub archive_path: &'a str,
@@ -78,6 +79,44 @@ mod ffi {
         pub local: Vec<LocalArduinoLibraryV<'a>>,
     }
 
+    #[derive(Debug, Clone)]
+    pub struct DigitalDriver {
+        pub read: bool,
+        pub write: bool,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct AnalogDriver {
+        pub read: bool,
+        pub write: bool,
+    }
+
+    // Board config
+    pub(crate) struct GpioDriverV {
+        pub pin_id: u16,
+        pub digital_driver: *const DigitalDriver,
+        pub analog_driver: *const AnalogDriver,
+    }
+
+    pub(crate) struct UartChannelV {
+        pub rx_pin_override: *const u16,
+        pub tx_pin_override: *const u16,
+        pub baud_rate: u16,
+        pub rx_buffer_length: usize,
+        pub tx_buffer_length: usize,
+        pub flushing_threshold: usize,
+    }
+
+    pub(crate) struct SecureDigitalStorageV<'a> {
+        pub(crate) cspin: u16,
+        pub(crate) root_dir: &'a str,
+    }
+
+    pub(crate) struct FrameBufferV {
+        pub(crate) key: usize,
+        pub(crate) direction: bool, // true = in false = out
+    }
+
     unsafe extern "C++" {
         include!("sketch.hxx");
 
@@ -92,14 +131,7 @@ mod ffi {
 
         include!("sketch_config.hxx");
         pub(crate) type OpaqueSketchConfig;
-        // pub struct SketchConfig {
-        //     pub fqbn: String,
-        //     pub extra_board_uris: Vec<String>,
-        //     pub preproc_libs: Vec<Library>,
-        //     pub complink_libs: Vec<Library>,
-        //     pub extra_compile_defs: Vec<String>,
-        //     pub extra_compile_opts: Vec<String>,
-        // }
+
         pub(crate) unsafe fn sketch_config_new(
             fqbn: &String,
             extra_board_uris: &Vec<String>,
@@ -133,7 +165,13 @@ mod ffi {
         include!("board_config.hxx");
 
         type OpaqueBoardConfig;
-        pub(crate) unsafe fn board_config_new() -> UniquePtr<OpaqueBoardConfig>;
+        pub(crate) unsafe fn board_config_new(
+            pins: &Vec<u16>,
+            gpio_drivers: Vec<GpioDriverV>,
+            uart_channels: Vec<UartChannelV>,
+            sd_cards: Vec<SecureDigitalStorageV>,
+            frame_buffers: Vec<FrameBufferV>,
+        ) -> UniquePtr<OpaqueBoardConfig>;
 
         include!("board.hxx");
 

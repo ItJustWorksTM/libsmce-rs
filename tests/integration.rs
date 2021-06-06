@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use libsmce_rs::board::Board;
-use libsmce_rs::board_config::BoardConfig;
+use libsmce_rs::board_config::{BoardConfig, DigitalDriver, GpioDriver, UartChannel};
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::{Library, SketchConfig};
 use libsmce_rs::toolchain::Toolchain;
@@ -16,24 +16,44 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
     let mut smce_resources = PathBuf::from(std::env::var("OUT_DIR")?);
     smce_resources.push("libsmce-rs/cmake");
 
-    let mut sketch = Sketch::new(
-        Path::new("./tests/sketches/mqtt/mqtt.ino"),
-        SketchConfig {
-            fqbn: "arduino:avr:nano".into(),
-            preproc_libs: vec![
-                Library::RemoteArduinoLibrary {
-                    name: "MQTT".into(),
-                    version: "2.5.0".into(),
-                },
-                Library::RemoteArduinoLibrary {
-                    name: "WiFi".into(),
-                    version: "1.2.7".into(),
-                },
-            ],
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let board_config = BoardConfig {
+        pins: vec![0, 1],
+        gpio_drivers: vec![
+            GpioDriver {
+                pin_id: 0,
+                digital_driver: DigitalDriver::default().into(),
+                analog_driver: None,
+            },
+            GpioDriver {
+                pin_id: 1,
+                digital_driver: DigitalDriver::default().into(),
+                analog_driver: None,
+            },
+        ],
+        uart_channels: vec![UartChannel::default()],
+        ..Default::default()
+    };
+
+    let sketch_config = SketchConfig {
+        fqbn: "arduino:avr:nano".into(),
+        preproc_libs: vec![
+            Library::RemoteArduinoLibrary {
+                name: "MQTT".into(),
+                version: "2.5.0".into(),
+            },
+            Library::RemoteArduinoLibrary {
+                name: "WiFi".into(),
+                version: "1.2.7".into(),
+            },
+        ],
+        ..Default::default()
+    };
+
+    let mut sketch =
+        Sketch::new(Path::new("./tests/sketches/mqtt/mqtt.ino"), sketch_config).unwrap();
+
+    println!("{:#?}", board_config);
+    println!("{:#?}", sketch);
 
     assert!(sketch.source().exists());
 
@@ -41,17 +61,21 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
     println!("{}", log);
 
     assert!(compile_res.is_ok());
-    println!("{:#?}", sketch);
 
     assert!(sketch.compiled());
 
-    let mut board = Board::default();
-    let mut handle = board.start(&BoardConfig::default(), &sketch)?;
+    let mut board = Board::new();
+    let mut handle = board.start(&board_config, &sketch)?;
 
     let mut view = handle.view();
-    view.digital_pin(0).unwrap().write(true);
 
-    view.digital_pin(1).unwrap().write(false);
+    view.digital_pin(0)
+        .expect("pin 0 doesnt exist :(")
+        .write(true);
+
+    view.digital_pin(1)
+        .expect("pin 1 doesnt exist :(")
+        .write(false);
 
     std::thread::sleep(Duration::from_secs(10));
 
