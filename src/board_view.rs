@@ -19,6 +19,7 @@
 use std::io;
 use std::io::{Read, Write};
 use std::marker::PhantomData;
+use std::pin::Pin;
 
 use cxx::UniquePtr;
 
@@ -27,7 +28,6 @@ use crate::ffi::OpaqueBoardView;
 use crate::ffi::OpaqueFramebuffer as OpaqueFrameBuffer;
 use crate::ffi::OpaqueVirtualPin;
 use crate::ffi::OpaqueVirtualUart;
-use std::pin::Pin;
 
 pub enum Link {
     Uart,
@@ -35,20 +35,30 @@ pub enum Link {
     I2c,
 }
 
-pub struct BoardView<'a, 'b, 'c> {
+pub struct BoardView<'a> {
     pub(crate) view: UniquePtr<OpaqueBoardView>,
-    pub(crate) board: PhantomData<&'a mut Board<'b, 'c>>,
+    pub(crate) board: PhantomData<&'a mut Board>,
 }
 
-impl<'a, 'b, 'c> BoardView<'a, 'b, 'c> {
-    pub fn pin(&mut self, id: usize) -> VirtualPin<'a, 'b, 'c> {
-        VirtualPin {
-            vp: unsafe { self.view.pin_mut().get_pin(id) },
+impl<'a> BoardView<'a> {
+    // TODO: make these Results for easier ? syntax
+    pub fn digital_pin(&mut self, id: usize) -> Option<VirtualDigitalPin<'a>> {
+        let mut pin: UniquePtr<OpaqueVirtualPin> = unsafe { self.view.pin_mut().get_pin(id) };
+        unsafe { pin.pin_mut().is_digital() }.then(move || VirtualDigitalPin {
+            vp: pin,
             board: PhantomData,
-        }
+        })
     }
 
-    pub fn uart(&mut self, id: usize) -> Option<VirtualUart<'a, 'b, 'c>> {
+    pub fn analog_pin(&mut self, id: usize) -> Option<VirtualAnalogPin<'a>> {
+        let mut pin: UniquePtr<OpaqueVirtualPin> = unsafe { self.view.pin_mut().get_pin(id) };
+        unsafe { pin.pin_mut().is_analog() }.then(move || VirtualAnalogPin {
+            vp: pin,
+            board: PhantomData,
+        })
+    }
+
+    pub fn uart(&mut self, id: usize) -> Option<VirtualUart<'a>> {
         let vu = unsafe { self.view.pin_mut().get_uart(id) };
         match !vu.is_null() {
             true => Some(VirtualUart {
@@ -59,7 +69,7 @@ impl<'a, 'b, 'c> BoardView<'a, 'b, 'c> {
         }
     }
 
-    pub fn framebuffer(&mut self, id: usize) -> Option<FrameBuffer<'a, 'b, 'c>> {
+    pub fn framebuffer(&mut self, id: usize) -> Option<FrameBuffer<'a>> {
         let fb = unsafe { self.view.pin_mut().get_framebuffer(id) };
         match fb.is_null() {
             true => Some(FrameBuffer {
@@ -71,58 +81,40 @@ impl<'a, 'b, 'c> BoardView<'a, 'b, 'c> {
     }
 }
 
-pub struct VirtualPin<'a, 'b, 'c> {
+pub struct VirtualDigitalPin<'a> {
     vp: UniquePtr<OpaqueVirtualPin>,
-    pub(crate) board: PhantomData<&'a mut Board<'b, 'c>>,
+    board: PhantomData<&'a mut Board>,
 }
 
-impl<'a, 'b, 'c> VirtualPin<'a, 'b, 'c> {
-    pub fn digital(mut self) -> Option<VirtualDigitalPin<'a, 'b, 'c>> {
-        match unsafe { self.vp.pin_mut().is_digital() } {
-            true => Some(VirtualDigitalPin { bv: self }),
-            false => None,
-        }
-    }
-    pub fn analog(mut self) -> Option<VirtualAnalogPin<'a, 'b, 'c>> {
-        match unsafe { self.vp.pin_mut().is_analog() } {
-            true => Some(VirtualAnalogPin { bv: self }),
-            false => None,
-        }
-    }
-}
-
-pub struct VirtualDigitalPin<'a, 'b, 'c> {
-    bv: VirtualPin<'a, 'b, 'c>,
-}
-
-impl VirtualDigitalPin<'_, '_, '_> {
+impl VirtualDigitalPin<'_> {
     pub fn write(&mut self, val: bool) {
-        unsafe { self.bv.vp.pin_mut().digital_write(val) }
+        unsafe { self.vp.pin_mut().digital_write(val) }
     }
     pub fn read(&mut self) -> bool {
-        unsafe { self.bv.vp.pin_mut().digital_read() }
+        unsafe { self.vp.pin_mut().digital_read() }
     }
 }
 
-pub struct VirtualAnalogPin<'a, 'b, 'c> {
-    bv: VirtualPin<'a, 'b, 'c>,
+pub struct VirtualAnalogPin<'a> {
+    vp: UniquePtr<OpaqueVirtualPin>,
+    board: PhantomData<&'a mut Board>,
 }
 
-impl VirtualAnalogPin<'_, '_, '_> {
+impl VirtualAnalogPin<'_> {
     pub fn write(&mut self, val: u16) {
-        unsafe { self.bv.vp.pin_mut().analog_write(val) }
+        unsafe { self.vp.pin_mut().analog_write(val) }
     }
     pub fn read(&mut self) -> u16 {
-        unsafe { self.bv.vp.pin_mut().analog_read() }
+        unsafe { self.vp.pin_mut().analog_read() }
     }
 }
 
-pub struct VirtualUart<'a, 'b, 'c> {
+pub struct VirtualUart<'a> {
     vu: UniquePtr<OpaqueVirtualUart>,
-    board: PhantomData<&'a mut Board<'b, 'c>>,
+    board: PhantomData<&'a mut Board>,
 }
 
-impl VirtualUart<'_, '_, '_> {
+impl VirtualUart<'_> {
     pub fn available(&mut self) -> usize {
         unsafe { self.vu.pin_mut().readable() }
     }
@@ -140,7 +132,7 @@ impl VirtualUart<'_, '_, '_> {
     }
 }
 
-impl Write for VirtualUart<'_, '_, '_> {
+impl Write for VirtualUart<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         unsafe { Ok(self.vu.pin_mut().write(buf)) }
     }
@@ -150,18 +142,18 @@ impl Write for VirtualUart<'_, '_, '_> {
     }
 }
 
-impl Read for VirtualUart<'_, '_, '_> {
+impl Read for VirtualUart<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe { Ok(self.vu.pin_mut().read(buf)) }
     }
 }
 
-pub struct FrameBuffer<'a, 'b, 'c> {
+pub struct FrameBuffer<'a> {
     fb: UniquePtr<OpaqueFrameBuffer>,
-    board: PhantomData<&'a mut Board<'b, 'c>>,
+    board: PhantomData<&'a mut Board>,
 }
 
-impl FrameBuffer<'_, '_, '_> {
+impl FrameBuffer<'_> {
     fn inner(&mut self) -> Pin<&mut OpaqueFrameBuffer> {
         self.fb.pin_mut()
     }
@@ -187,7 +179,7 @@ impl FrameBuffer<'_, '_, '_> {
     }
 }
 
-impl Write for FrameBuffer<'_, '_, '_> {
+impl Write for FrameBuffer<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         unsafe { Ok(self.inner().write_rgb888(buf)) }
     }

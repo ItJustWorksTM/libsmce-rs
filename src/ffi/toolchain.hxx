@@ -26,6 +26,8 @@
 
 enum class ToolchainResult : uint8_t;
 
+using OpaqueLockedLog = smce::Toolchain::LockedLog;
+
 struct OpaqueToolchain : public smce::Toolchain {
     using smce::Toolchain::Toolchain;
 
@@ -33,6 +35,7 @@ struct OpaqueToolchain : public smce::Toolchain {
     auto cmake_path() const -> rust::Str;
     auto check_suitable_environment() -> ToolchainResult;
     auto compile(std::unique_ptr<OpaqueSketch>& sketch) -> ToolchainResult;
+    auto read_build_log() -> rust::String;
 };
 
 auto toolchain_new(rust::Str resource_dir) -> std::unique_ptr<OpaqueToolchain>;

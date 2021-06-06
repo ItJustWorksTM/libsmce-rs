@@ -18,6 +18,13 @@
 
 use std::path::PathBuf;
 
+use cxx::UniquePtr;
+
+use crate::ffi::{
+    sketch_config_new, FreestandingLibraryV, LibraryV, LocalArduinoLibraryV, OpaqueSketchConfig,
+    RemoteArduinoLibraryV,
+};
+
 #[derive(Debug)]
 pub enum Library {
     FreestandingLibrary {
@@ -35,6 +42,38 @@ pub enum Library {
     },
 }
 
+fn as_simple(libs: &Vec<Library>) -> LibraryV {
+    let mut ret = LibraryV::default();
+    for lib in libs {
+        match lib {
+            Library::FreestandingLibrary {
+                include_dir,
+                archive_path,
+                compile_defs,
+            } => {
+                ret.free.push(FreestandingLibraryV {
+                    include_dir: include_dir.to_str().unwrap(),
+                    archive_path: archive_path.to_str().unwrap(),
+                    compile_defs,
+                });
+            }
+            Library::RemoteArduinoLibrary { name, version } => {
+                ret.remote.push(RemoteArduinoLibraryV { name, version });
+            }
+            Library::LocalArduinoLibrary {
+                root_dir,
+                patch_for,
+            } => {
+                ret.local.push(LocalArduinoLibraryV {
+                    root_dir: root_dir.to_str().unwrap(),
+                    patch_for,
+                });
+            }
+        }
+    }
+    ret
+}
+
 #[derive(Debug, Default)]
 pub struct SketchConfig {
     pub fqbn: String,
@@ -43,4 +82,19 @@ pub struct SketchConfig {
     pub complink_libs: Vec<Library>,
     pub extra_compile_defs: Vec<String>,
     pub extra_compile_opts: Vec<String>,
+}
+
+impl SketchConfig {
+    pub(crate) fn as_opaque(&self) -> UniquePtr<OpaqueSketchConfig> {
+        unsafe {
+            sketch_config_new(
+                &self.fqbn,
+                &self.extra_board_uris,
+                as_simple(&self.preproc_libs),
+                as_simple(&self.complink_libs),
+                &self.extra_compile_defs,
+                &self.extra_compile_opts,
+            )
+        }
+    }
 }

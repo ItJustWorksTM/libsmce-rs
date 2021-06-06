@@ -15,12 +15,13 @@
  *  limitations under the License.
  *
  */
+
 #ifndef LIBSMCE_RS_BOARD_VIEW_HXX
 #define LIBSMCE_RS_BOARD_VIEW_HXX
 
-#include <rust/cxx.h>
-#include <SMCE/BoardView.hpp>
 #include <memory>
+#include <SMCE/BoardView.hpp>
+#include <rust/cxx.h>
 
 struct OpaqueVirtualPin : smce::VirtualPin {
     auto is_digital() -> bool;
@@ -48,7 +49,6 @@ struct OpaqueFramebuffer : smce::FrameBuffer {
     auto freq() -> uint8_t;
     auto write_rgb888(rust::Slice<const uint8_t> buf) -> size_t;
     auto write_rgb444(rust::Slice<const uint8_t> buf) -> size_t;
-
 };
 
 struct OpaqueBoardView : smce::BoardView {
@@ -56,6 +56,5 @@ struct OpaqueBoardView : smce::BoardView {
     auto get_uart(size_t id) -> std::unique_ptr<OpaqueVirtualUart>;
     auto get_pin(size_t id) -> std::unique_ptr<OpaqueVirtualPin>;
 };
-
 
 #endif // LIBSMCE_RS_BOARD_VIEW_HXX

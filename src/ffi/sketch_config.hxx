@@ -1,5 +1,5 @@
 /*
- *  sketch.hxx
+ *  sketch_config.hxx
  *  Copyright 2021 ItJustWorksTM
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,25 +16,20 @@
  *
  */
 
-#ifndef LIBSMCE_RS_SKETCH_HXX
-#define LIBSMCE_RS_SKETCH_HXX
+#ifndef LIBSMCE_RS_SKETCH_CONFIG_HXX
+#define LIBSMCE_RS_SKETCH_CONFIG_HXX
 
+#include <memory>
+#include <SMCE/SketchConf.hpp>
 #include <rust/cxx.h>
-#include <SMCE/Sketch.hpp>
-#include "sketch_config.hxx"
 
-struct Uuid;
+struct LibraryV;
+using OpaqueSketchConfig = smce::SketchConfig;
 
-struct OpaqueSketch : public smce::Sketch {
-    using smce::Sketch::Sketch;
+auto sketch_config_new(const rust::String& fqbn, const rust::Vec<rust::String>& extra_board_uris,
+                       LibraryV preproc_libs, LibraryV complink_libs,
+                       const rust::Vec<rust::String>& extra_compile_defs,
+                       const rust::Vec<rust::String>& extra_compile_opts)
+    -> std::unique_ptr<OpaqueSketchConfig>;
 
-    auto get_source() const -> rust::Str;
-
-    auto is_compiled() const -> bool;
-
-    auto get_uuid() const -> Uuid;
-};
-
-auto sketch_new(rust::Str source, const OpaqueSketchConfig& config) -> std::unique_ptr<OpaqueSketch>;
-
-#endif // LIBSMCE_RS_SKETCH_HXX
+#endif // LIBSMCE_RS_SKETCH_CONFIG_HXX

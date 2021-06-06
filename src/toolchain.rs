@@ -32,18 +32,25 @@ pub struct Toolchain {
 impl Toolchain {
     pub fn new(resource_dir: &Path) -> Result<Self, ToolchainResult> {
         let mut internal = unsafe { toolchain_new(resource_dir.to_str().unwrap_or("")) };
-        let res = unsafe { internal.pin_mut().check_suitable_environment() };
-        match res {
+        match unsafe { internal.pin_mut().check_suitable_environment() } {
             ToolchainResult::Ok => Ok(Toolchain { internal }),
-            _ => Err(res),
+            res => Err(res),
         }
     }
 
-    pub fn compile(&mut self, sketch: &mut Sketch) -> Result<(), ToolchainResult> {
-        let res = unsafe { self.internal.pin_mut().compile(&mut sketch.internal) };
-        match res {
-            ToolchainResult::Ok => Ok(()),
-            _ => Err(res),
+    pub fn compile(
+        sketch: &mut Sketch,
+        resource_dir: &Path,
+    ) -> (Result<(), ToolchainResult>, String) {
+        match Self::new(resource_dir) {
+            Ok(mut tc) => (
+                match unsafe { tc.internal.pin_mut().compile(&mut sketch.internal) } {
+                    ToolchainResult::Ok => Ok(()),
+                    res => Err(res),
+                },
+                unsafe { tc.internal.pin_mut().read_build_log() },
+            ),
+            Err(res) => (Err(res), String::new()),
         }
     }
 

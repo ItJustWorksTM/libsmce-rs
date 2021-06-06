@@ -16,7 +16,7 @@
  *
  */
 
-pub use crate::ffi::Uuid;
+use crate::ffi::Uuid;
 use crate::ffi::{uuid_generate, uuid_to_hex};
 
 impl Uuid {

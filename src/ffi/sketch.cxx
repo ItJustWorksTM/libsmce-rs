@@ -25,10 +25,9 @@
 
 using smce::Sketch;
 
-auto sketch_new(rust::Str source) -> std::unique_ptr<OpaqueSketch> {
+auto sketch_new(rust::Str source, const OpaqueSketchConfig& config) -> std::unique_ptr<OpaqueSketch> {
     auto src_sv = std::string_view{source.data(), source.size()};
-
-    auto sk = OpaqueSketch{smce::stdfs::path{src_sv}, smce::SketchConfig{.fqbn = "arduino:avr:nano"}};
+    auto sk = OpaqueSketch{smce::stdfs::path{src_sv}, config};
 
     return std::make_unique<OpaqueSketch>(sk);
 }

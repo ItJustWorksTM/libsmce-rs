@@ -90,6 +90,12 @@ pub struct BoardConfig {
     pub frame_buffers: Vec<FrameBuffer>,
 }
 
+impl BoardConfig {
+    pub(crate) fn as_native(&self) -> UniquePtr<OpaqueBoardConfig> {
+        unsafe { board_config_new() }
+    }
+}
+
 impl Into<UniquePtr<OpaqueBoardConfig>> for BoardConfig {
     // TODO: Actually implement
     fn into(self) -> UniquePtr<OpaqueBoardConfig> {

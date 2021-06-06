@@ -39,3 +39,13 @@ auto OpaqueToolchain::compile(std::unique_ptr<OpaqueSketch>& sketch) -> Toolchai
     const auto ret = Toolchain::compile(*sketch);
     return static_cast<ToolchainResult>(ret.value());
 }
+auto OpaqueToolchain::read_build_log() -> rust::String {
+    try {
+        auto log = Toolchain::build_log();
+        auto str = rust::String{log.second};
+        log.second.clear();
+        return str;
+    } catch (...) {
+    } // rust::String can bail on non utf8 input
+    return rust::String{};
+}

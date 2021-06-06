@@ -16,153 +16,143 @@
  *
  */
 
-use std::convert::{TryFrom, TryInto};
+use std::error::Error;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 use std::pin::Pin;
 
 use cxx::UniquePtr;
 
 use crate::board_config::BoardConfig;
+// use crate::board_view::BoardView;
 use crate::board_view::BoardView;
-use crate::ffi::{board_new, BoardStatus, OpaqueBoard};
+use crate::ffi::{board_new, BoardStatus, ExitInfo, OpaqueBoard};
 use crate::sketch::Sketch;
 
-pub struct BoardVendor {
-    internal: UniquePtr<OpaqueBoard>,
-    config: BoardConfig,
+#[derive(Debug)]
+pub enum BoardError {
+    SketchNotCompiled,
+    AlreadyRunning,
 }
 
-pub struct Board<'a, 'b> {
-    board: &'a mut BoardVendor,
-    sketch: &'b Sketch,
-}
-
-impl BoardVendor {
-    fn inner_mut(&mut self) -> Pin<&mut OpaqueBoard> {
-        self.internal.pin_mut()
+impl Display for BoardError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
+}
 
-    pub fn new(config: BoardConfig) -> Self {
-        unsafe {
-            let mut board = board_new();
-            board.pin_mut().configure(&config.clone().into());
-            BoardVendor {
-                internal: board,
-                config,
-            }
+impl Error for BoardError {}
+
+pub struct Board {
+    internal: Option<UniquePtr<OpaqueBoard>>,
+}
+
+pub struct BoardHandle<'a> {
+    board: &'a mut Board,
+}
+
+type ExitCode = i32;
+
+impl Board {
+    pub fn start(
+        &mut self,
+        config: &BoardConfig,
+        sketch: &Sketch,
+    ) -> Result<BoardHandle<'_>, BoardError> {
+        if self.internal.is_some() {
+            return Err(BoardError::AlreadyRunning);
         }
+        if !sketch.compiled() {
+            return Err(BoardError::SketchNotCompiled);
+        }
+
+        let mut board: UniquePtr<OpaqueBoard> = unsafe { board_new() };
+        let config = config.as_native();
+        assert!(!board.is_null() && !config.is_null());
+
+        // configure
+        assert!(unsafe { board.pin_mut().configure(&config) });
+
+        // attach
+        assert!(unsafe { board.pin_mut().attach_sketch(&sketch.internal) });
+
+        // start
+        assert!(unsafe { board.pin_mut().start() });
+
+        self.internal = Some(board);
+        Ok(self.handle().unwrap())
     }
 
-    pub fn use_sketch<'a, 'b>(&'a mut self, sketch: &'b Sketch) -> Option<Board<'a, 'b>> {
-        if sketch.is_compiled() && unsafe { self.inner_mut().attach_sketch(&sketch.internal) } {
-            Some(Board {
-                board: self,
-                sketch,
-            })
+    pub fn handle(&mut self) -> Option<BoardHandle<'_>> {
+        if self.internal.is_some() {
+            Some(BoardHandle { board: self })
         } else {
             None
         }
     }
 }
 
-#[derive(PartialEq, Debug)]
-pub enum Status {
-    Ready,
+impl Default for Board {
+    fn default() -> Self {
+        Self { internal: None }
+    }
+}
+
+pub enum BoardHandleStatus {
     Running,
     Suspended,
 }
 
-type ExitCode = i32;
-
-impl TryFrom<BoardStatus> for Status {
-    type Error = ();
-
-    fn try_from(value: BoardStatus) -> Result<Self, Self::Error> {
-        match value {
-            BoardStatus::Running => Ok(Status::Running),
-            BoardStatus::Suspended => Ok(Status::Suspended),
-            BoardStatus::Stopped | BoardStatus::Configured => Ok(Status::Ready),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'a, 'b> Board<'a, 'b> {
-    fn inner_mut(&mut self) -> Pin<&mut OpaqueBoard> {
-        self.board.inner_mut()
+impl BoardHandle<'_> {
+    // unwrap is safe as we only exist when active
+    #[doc(hidden)]
+    fn internal(&mut self) -> Pin<&mut OpaqueBoard> {
+        self.board.internal.as_mut().unwrap().pin_mut()
     }
 
-    fn inner(&self) -> &UniquePtr<OpaqueBoard> {
-        &self.board.internal
-    }
-
-    pub fn status(&self) -> Status {
-        unsafe { self.inner().status() }
-            .try_into()
-            .expect("Invalid state")
-    }
-
-    pub fn tick(&mut self) -> Result<(), ExitCode> {
-        let exit_info = unsafe { self.inner_mut().tick() };
-        if !exit_info.exited {
-            Ok(())
-        } else {
-            Err(exit_info.exit_code)
-        }
-    }
-
-    pub fn start(&mut self) -> bool {
-        unsafe { self.inner_mut().start() }
+    pub fn status() -> BoardHandleStatus {
+        todo!()
     }
 
     pub fn suspend(&mut self) -> bool {
-        unsafe { self.inner_mut().suspend() }
+        unsafe { self.internal().suspend() }
     }
 
     pub fn resume(&mut self) -> bool {
-        unsafe { self.inner_mut().resume() }
+        unsafe { self.internal().resume() }
     }
 
-    pub fn terminate(&mut self) -> bool {
-        unsafe {
-            let ret = self.inner_mut().terminate();
-            // Workaround for libSMCE crash when restarting a sketch.
-            if ret {
-                assert!(self.inner_mut().reset());
-                let new_config = self.board.config.clone().into();
-                assert!(self.inner_mut().configure(&new_config));
-                let sketch = &self.sketch.internal;
-                assert!(self.inner_mut().attach_sketch(sketch));
+    pub fn view(&mut self) -> BoardView<'_> {
+        BoardView {
+            view: unsafe { self.internal().view() },
+            board: PhantomData,
+        }
+    }
+
+    // Calls tick() once, if the sketch is still running we explicitly terminate
+    pub fn stop(self) -> ExitCode {
+        match self.tick() {
+            Ok(mut handle) => {
+                assert!(unsafe { handle.internal().terminate() });
+                handle.board.internal = None;
+                0
             }
-            ret
+            Err(exit_code) => exit_code,
         }
     }
 
-    pub fn view<'s>(&'s mut self) -> Option<BoardView<'s, 'a, 'b>> {
-        match self.status() {
-            Status::Running | Status::Suspended => Some(BoardView {
-                view: unsafe { self.inner_mut().view() },
-                board: PhantomData,
-            }),
-            _ => None,
+    // Checks whether the sketch has died, returning the exit code if it has,
+    pub fn tick(mut self) -> Result<Self, ExitCode> {
+        match unsafe { self.internal().tick() } {
+            ExitInfo {
+                exit_code,
+                exited: true,
+            } => {
+                self.board.internal = None;
+                Err(exit_code)
+            }
+            _ => Ok(self),
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::path::Path;
-
-    use crate::board::BoardVendor;
-    use crate::board_config::BoardConfig;
-    use crate::sketch::Sketch;
-    #[test]
-    fn basics() {
-        let mut vendor = BoardVendor::new(BoardConfig::default());
-        let sketch = Sketch::new(Path::new(""));
-        assert!(sketch.is_some());
-        let sketch = sketch.unwrap();
-        let board = vendor.use_sketch(&sketch);
-        assert!(board.is_none());
     }
 }

@@ -56,6 +56,7 @@ fn main() {
         "src/ffi/board.cxx",
         "src/ffi/toolchain.cxx",
         "src/ffi/board_view.cxx",
+        "src/ffi/sketch_config.cxx",
     ];
 
     cxx_build::bridge("src/ffi/definitions.rs")
