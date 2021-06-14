@@ -30,6 +30,7 @@ struct OpaqueVirtualPin : smce::VirtualPin {
     auto digital_read() -> bool;
     auto analog_write(uint16_t) -> void;
     auto analog_read() -> uint16_t;
+    auto clone() -> std::unique_ptr<OpaqueVirtualPin>;
 };
 
 struct OpaqueVirtualUart : smce::VirtualUart {
@@ -39,6 +40,7 @@ struct OpaqueVirtualUart : smce::VirtualUart {
     auto read(rust::Slice<uint8_t> buf) -> size_t;
     auto write(rust::Slice<const uint8_t> buf) -> size_t;
     auto front() -> uint8_t;
+    auto clone() -> std::unique_ptr<OpaqueVirtualUart>;
 };
 
 struct OpaqueFramebuffer : smce::FrameBuffer {
@@ -55,6 +57,7 @@ struct OpaqueBoardView : smce::BoardView {
     auto get_framebuffer(size_t id) -> std::unique_ptr<OpaqueFramebuffer>;
     auto get_uart(size_t id) -> std::unique_ptr<OpaqueVirtualUart>;
     auto get_pin(size_t id) -> std::unique_ptr<OpaqueVirtualPin>;
+    auto clone() -> std::unique_ptr<OpaqueBoardView>;
 };
 
 #endif // LIBSMCE_RS_BOARD_VIEW_HXX

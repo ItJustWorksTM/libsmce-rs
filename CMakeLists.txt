@@ -35,7 +35,8 @@ get_filename_component(SMCE_LIB_LOOK ${SMCE_IMPORTED_LOCATION} DIRECTORY)
 message("cargo:rustc-link-search=${SMCE_LIB_LOOK}")
 message("cargo:rustc-link-lib=dylib=SMCE")
 
+
 execute_process(
         COMMAND "${CMAKE_COMMAND}" -E tar xf "${SMCE_RESOURCES_ARK}"
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        WORKING_DIRECTORY "$ENV{OUT_DIR}"
 )

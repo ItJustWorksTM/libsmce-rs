@@ -20,23 +20,25 @@
 
 using smce::BoardView;
 
+template<class T>
+auto reset_if(T&& ptr) {
+    if (!ptr->exists())
+        ptr.reset();
+    return std::forward<T>(ptr);
+}
+
 auto OpaqueBoardView::get_framebuffer(size_t id) -> std::unique_ptr<OpaqueFramebuffer> {
-    auto fb = std::make_unique<OpaqueFramebuffer>(OpaqueFramebuffer{frame_buffers[id]});
-    if (!fb->exists())
-        fb.reset();
-    return fb;
+    return reset_if(std::make_unique<OpaqueFramebuffer>(OpaqueFramebuffer{frame_buffers[id]}));;
 }
 
 auto OpaqueBoardView::get_uart(size_t id) -> std::unique_ptr<OpaqueVirtualUart> {
-    auto fb = std::make_unique<OpaqueVirtualUart>(OpaqueVirtualUart{uart_channels[id]});
-    if (!fb->exists())
-        fb.reset();
-    return fb;
+    return reset_if(std::make_unique<OpaqueVirtualUart>(OpaqueVirtualUart{uart_channels[id]}));
 }
 
 auto OpaqueBoardView::get_pin(size_t id) -> std::unique_ptr<OpaqueVirtualPin> {
     return std::make_unique<OpaqueVirtualPin>(OpaqueVirtualPin{pins[id]});
 }
+auto OpaqueBoardView::clone() -> std::unique_ptr<OpaqueBoardView> { return std::make_unique<OpaqueBoardView>(*this); }
 
 auto OpaqueVirtualPin::is_digital() -> bool { return digital().exists(); }
 auto OpaqueVirtualPin::is_analog() -> bool { return analog().exists(); }
@@ -44,6 +46,7 @@ auto OpaqueVirtualPin::analog_write(uint16_t val) -> void { analog().write(val);
 auto OpaqueVirtualPin::analog_read() -> uint16_t { return analog().read(); }
 auto OpaqueVirtualPin::digital_write(bool val) -> void { digital().write(val); }
 auto OpaqueVirtualPin::digital_read() -> bool { return digital().read(); }
+auto OpaqueVirtualPin::clone() -> std::unique_ptr<OpaqueVirtualPin> { return std::make_unique<OpaqueVirtualPin>(*this); }
 
 auto OpaqueVirtualUart::readable() -> size_t { return tx().size(); }
 auto OpaqueVirtualUart::max_read() -> size_t { return tx().max_size(); }
@@ -55,6 +58,7 @@ auto OpaqueVirtualUart::write(rust::Slice<const uint8_t> buf) -> size_t {
     return rx().write({reinterpret_cast<const char*>(buf.data()), buf.size()});
 }
 auto OpaqueVirtualUart::front() -> uint8_t { return tx().front(); }
+auto OpaqueVirtualUart::clone() -> std::unique_ptr<OpaqueVirtualUart> { return std::make_unique<OpaqueVirtualUart>(*this); }
 
 auto OpaqueFramebuffer::needs_horizontal_flip() -> bool { return needs_horizontal_flip(); }
 auto OpaqueFramebuffer::needs_vertical_flip() -> bool { return needs_vertical_flip(); }

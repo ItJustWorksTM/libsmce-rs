@@ -16,36 +16,34 @@
  *
  */
 
+use std::cell::UnsafeCell;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
+use std::ops::{Deref, Index};
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 
 use cxx::UniquePtr;
 
-use crate::board_config::BoardConfig;
+use crate::board_config::{BoardConfig, GpioDriver};
 // use crate::board_view::BoardView;
-use crate::board_view::BoardView;
-use crate::ffi::{board_new, BoardStatus, ExitInfo, OpaqueBoard};
+use crate::board_view::{
+    AnalogPin, AnalogPins, BoardView, DigitalPin, DigitalPins, FrameBuffer, FrameBuffers,
+    UartChannel, UartChannels,
+};
+use crate::ffi::{
+    board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView, OpaqueVirtualPin,
+};
 use crate::sketch::Sketch;
 
-#[derive(Debug)]
-pub enum BoardError {
-    SketchNotCompiled,
-    AlreadyRunning,
-}
-
-impl Display for BoardError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Error for BoardError {}
+unsafe impl Send for OpaqueBoard {}
 
 pub struct Board {
-    internal: Option<UniquePtr<OpaqueBoard>>,
+    internal: Option<(UniquePtr<OpaqueBoard>, BoardView)>,
 }
 
 pub struct BoardHandle<'a> {
@@ -72,11 +70,11 @@ impl Board {
         }
 
         let mut board: UniquePtr<OpaqueBoard> = unsafe { board_new() };
-        let config = config.as_native();
-        assert!(!board.is_null() && !config.is_null());
+        let native_config = config.as_native();
+        assert!(!board.is_null() && !native_config.is_null());
 
         // configure
-        assert!(unsafe { board.pin_mut().configure(&config) });
+        assert!(unsafe { board.pin_mut().configure(&native_config) });
 
         // attach
         assert!(unsafe { board.pin_mut().attach_sketch(&sketch.internal) });
@@ -84,7 +82,82 @@ impl Board {
         // start
         assert!(unsafe { board.pin_mut().start() });
 
-        self.internal = Some(board);
+        let mut bv: UniquePtr<OpaqueBoardView> = unsafe { board.pin_mut().view() };
+
+        let bvstr = BoardView {
+            digital_pins: DigitalPins {
+                inner: {
+                    config
+                        .gpio_drivers
+                        .iter()
+                        .filter_map(|a| {
+                            a.digital_driver.as_ref().map(|_| {
+                                (
+                                    a.pin_id as usize,
+                                    DigitalPin {
+                                        inner: UnsafeCell::new(unsafe {
+                                            bv.pin_mut().get_pin(a.pin_id as usize)
+                                        }),
+                                        info: a.digital_driver.as_ref().unwrap().clone(),
+                                    },
+                                )
+                            })
+                        })
+                        .collect()
+                },
+            },
+            analog_pins: AnalogPins {
+                inner: {
+                    config
+                        .gpio_drivers
+                        .iter()
+                        .filter_map(|a| {
+                            a.analog_driver.as_ref().map(|_| {
+                                (
+                                    a.pin_id as usize,
+                                    AnalogPin {
+                                        inner: UnsafeCell::new(unsafe {
+                                            bv.pin_mut().get_pin(a.pin_id as usize)
+                                        }),
+                                        info: a.analog_driver.as_ref().unwrap().clone(),
+                                    },
+                                )
+                            })
+                        })
+                        .collect()
+                },
+            },
+            uart_channels: UartChannels {
+                inner: config
+                    .uart_channels
+                    .iter()
+                    .enumerate()
+                    .map(|(i, info)| UartChannel {
+                        inner: UnsafeCell::new(unsafe { bv.pin_mut().get_uart(i) }),
+                        info: info.clone(),
+                    })
+                    .collect(),
+            },
+            frame_buffers: FrameBuffers {
+                inner: config
+                    .frame_buffers
+                    .iter()
+                    .map(|fb| {
+                        (
+                            fb.key,
+                            FrameBuffer {
+                                inner: UnsafeCell::new(unsafe {
+                                    bv.pin_mut().get_framebuffer(fb.key)
+                                }),
+                                info: fb.clone(),
+                            },
+                        )
+                    })
+                    .collect(),
+            },
+        };
+
+        self.internal = Some((board, bvstr));
         Ok(self.handle().unwrap())
     }
 
@@ -111,8 +184,8 @@ pub enum BoardHandleStatus {
 impl BoardHandle<'_> {
     // unwrap is safe as we only exist when active
     #[doc(hidden)]
-    fn internal(&mut self) -> Pin<&mut OpaqueBoard> {
-        self.board.internal.as_mut().unwrap().pin_mut()
+    fn internal(&mut self) -> &mut (UniquePtr<OpaqueBoard>, BoardView) {
+        self.board.internal.as_mut().unwrap()
     }
 
     pub fn status() -> BoardHandleStatus {
@@ -120,25 +193,22 @@ impl BoardHandle<'_> {
     }
 
     pub fn suspend(&mut self) -> bool {
-        unsafe { self.internal().suspend() }
+        unsafe { self.internal().0.pin_mut().suspend() }
     }
 
     pub fn resume(&mut self) -> bool {
-        unsafe { self.internal().resume() }
+        unsafe { self.internal().0.pin_mut().resume() }
     }
 
-    pub fn view(&mut self) -> BoardView<'_> {
-        BoardView {
-            view: unsafe { self.internal().view() },
-            board: PhantomData,
-        }
+    pub fn view(&mut self) -> &BoardView {
+        &self.internal().1
     }
 
     // Calls tick() once, if the sketch is still running we explicitly terminate
     pub fn stop(self) -> ExitCode {
         match self.tick() {
             Ok(mut handle) => {
-                assert!(unsafe { handle.internal().terminate() });
+                assert!(unsafe { handle.internal().0.pin_mut().terminate() });
                 handle.board.internal = None;
                 0
             }
@@ -148,7 +218,10 @@ impl BoardHandle<'_> {
 
     // Checks whether the sketch has died, returning the exit code if it has,
     pub fn tick(mut self) -> Result<Self, ExitCode> {
-        match unsafe { self.internal().tick() } {
+        match unsafe {
+            let x = self.internal().0.pin_mut().tick();
+            x
+        } {
             ExitInfo {
                 exit_code,
                 exited: true,
@@ -160,3 +233,17 @@ impl BoardHandle<'_> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum BoardError {
+    SketchNotCompiled,
+    AlreadyRunning,
+}
+
+impl Display for BoardError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for BoardError {}

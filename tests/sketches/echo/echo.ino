@@ -5,9 +5,6 @@ void setup() {
 void loop() {
     if(Serial.available()) {
         auto str = Serial.readString();
-        if (str.startsWith("q")) {
-            throw 123;
-        }
         Serial.println(str);
     }
         

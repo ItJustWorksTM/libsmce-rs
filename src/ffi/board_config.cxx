@@ -21,10 +21,12 @@
 #include "libsmce-rs/src/ffi/definitions.rs"
 #include "board_config.hxx"
 
+#include <iostream>
+
 auto board_config_new(const rust::Vec<uint16_t>& pins, rust::Vec<GpioDriverV> gpio_drivers,
                       rust::Vec<UartChannelV> uart_channels, rust::Vec<SecureDigitalStorageV> sd_cards,
                       rust::Vec<FrameBufferV> frame_buffers) -> std::unique_ptr<OpaqueBoardConfig> {
-    auto ret = smce::BoardConfig{.uart_channels = {{}}};
+    auto ret = smce::BoardConfig{};
     std::copy(pins.begin(), pins.end(), std::back_inserter(ret.pins));
 
     std::transform(gpio_drivers.begin(), gpio_drivers.end(), std::back_inserter(ret.gpio_drivers),
@@ -59,7 +61,7 @@ auto board_config_new(const rust::Vec<uint16_t>& pins, rust::Vec<GpioDriverV> gp
                        ret.tx_buffer_length = uart.tx_buffer_length;
                        ret.flushing_threshold = uart.flushing_threshold;
 
-                       return ret;
+                     return ret;
                    });
 
     std::transform(sd_cards.begin(), sd_cards.end(), std::back_inserter(ret.sd_cards), [](const auto& sd) {

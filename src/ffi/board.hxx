@@ -25,6 +25,7 @@
 #include "board_config.hxx"
 #include "board_view.hxx"
 #include "sketch.hxx"
+#include <iostream>
 
 enum class BoardStatus : uint8_t;
 
@@ -36,6 +37,8 @@ struct OpaqueBoard {
     int exit_code = 0;
 
     OpaqueBoard();
+
+    ~OpaqueBoard() { std::cout << "OPAQUE BOARD DIES \n"; }
 
     auto configure(const std::unique_ptr<OpaqueBoardConfig>& config) -> bool;
     auto attach_sketch(const std::unique_ptr<OpaqueSketch>& sketch) -> bool;

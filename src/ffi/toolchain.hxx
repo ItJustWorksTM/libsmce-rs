@@ -26,8 +26,6 @@
 
 enum class ToolchainResult : uint8_t;
 
-using OpaqueLockedLog = smce::Toolchain::LockedLog;
-
 struct OpaqueToolchain : public smce::Toolchain {
     using smce::Toolchain::Toolchain;
 

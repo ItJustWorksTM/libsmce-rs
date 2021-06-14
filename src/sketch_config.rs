@@ -42,7 +42,7 @@ pub enum Library {
     },
 }
 
-fn as_simple(libs: &Vec<Library>) -> LibraryV {
+fn as_simple(libs: &[Library]) -> LibraryV {
     let mut ret = LibraryV::default();
     for lib in libs {
         match lib {

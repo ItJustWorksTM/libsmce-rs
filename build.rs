@@ -73,7 +73,7 @@ fn main() {
     resources_dir.push("RtResources");
 
     println!(
-        "cargo:SMCE_RESOURCES_DIR={}",
+        "cargo:warning:resources={}",
         resources_dir.to_str().unwrap()
     );
 

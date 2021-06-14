@@ -149,7 +149,6 @@ pub mod ffi {
         include!("toolchain.hxx");
 
         pub(crate) type OpaqueToolchain;
-        pub(crate) type OpaqueLockedLog;
         pub(crate) unsafe fn toolchain_new(resource_dir: &str) -> UniquePtr<OpaqueToolchain>;
         pub(crate) unsafe fn resource_dir<'a>(self: &'a OpaqueToolchain) -> &'a str;
         pub(crate) unsafe fn cmake_path<'a>(self: &'a OpaqueToolchain) -> &'a str;
@@ -209,6 +208,7 @@ pub mod ffi {
             self: Pin<&mut OpaqueBoardView>,
             id: usize,
         ) -> UniquePtr<OpaqueFramebuffer>;
+        pub(crate) unsafe fn clone(self: Pin<&mut OpaqueBoardView>) -> UniquePtr<OpaqueBoardView>;
 
         pub(crate) type OpaqueVirtualPin;
         pub(crate) unsafe fn is_digital(self: Pin<&mut OpaqueVirtualPin>) -> bool;
@@ -225,6 +225,9 @@ pub mod ffi {
         pub(crate) unsafe fn write(self: Pin<&mut OpaqueVirtualUart>, buf: &[u8]) -> usize;
         pub(crate) unsafe fn read(self: Pin<&mut OpaqueVirtualUart>, buf: &mut [u8]) -> usize;
         pub(crate) unsafe fn front(self: Pin<&mut OpaqueVirtualUart>) -> u8;
+        pub(crate) unsafe fn clone(
+            self: Pin<&mut OpaqueVirtualUart>,
+        ) -> UniquePtr<OpaqueVirtualUart>;
 
         pub(crate) type OpaqueFramebuffer;
         pub(crate) unsafe fn needs_horizontal_flip(self: Pin<&mut OpaqueFramebuffer>) -> bool;

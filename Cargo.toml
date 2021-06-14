@@ -3,10 +3,19 @@ name = "libsmce-rs"
 version = "0.1.0"
 authors = ["Ruthger Dijt <ruthgerdijt@gmail.com>"]
 edition = "2018"
-links = "SMCE"
+links = "smce"
+repository = "https://github.com/ItJustWorksTM/libsmce-rs"
+description = "Bindings libSMCE."
+categories = ["external-ffi-bindings"]
 
 [dependencies]
 cxx = { version = "1.0", features = ["c++20"] }
+anyhow = "1.0"
+thiserror = "1.0"
 
 [build-dependencies]
 cxx-build = "1.0"
+
+[[example]]
+name = "std_uart"
+path = "examples/stduart/stduart.rs"

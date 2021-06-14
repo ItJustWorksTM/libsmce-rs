@@ -75,6 +75,15 @@ pub struct FrameBuffer {
     pub direction: FrameBufferDirection,
 }
 
+impl Default for FrameBuffer {
+    fn default() -> Self {
+        Self {
+            key: 0,
+            direction: FrameBufferDirection::In,
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct BoardConfig {
     pub pins: Vec<u16>,

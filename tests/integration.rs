@@ -6,15 +6,14 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use libsmce_rs::board::Board;
-use libsmce_rs::board_config::{BoardConfig, DigitalDriver, GpioDriver, UartChannel};
+use libsmce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver, UartChannel};
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::{Library, SketchConfig};
 use libsmce_rs::toolchain::Toolchain;
 
 #[test]
 fn test_compile() -> Result<(), Box<dyn Error>> {
-    let mut smce_resources = PathBuf::from(std::env::var("OUT_DIR")?);
-    smce_resources.push("libsmce-rs/cmake");
+    let mut smce_resources = PathBuf::from(env!("OUT_DIR"));
 
     let board_config = BoardConfig {
         pins: vec![0, 1],
@@ -31,6 +30,7 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
             },
         ],
         uart_channels: vec![UartChannel::default()],
+        frame_buffers: vec![FrameBuffer::default()],
         ..Default::default()
     };
 
