@@ -89,13 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &sketch,
     )?;
 
-    let pin = &handle.view().analog_pins[123];
-
     assert_eq!(handle.view().uart_channels.len(), 1);
-
-    let mut uart0 = &handle.view().uart_channels[0];
-
-    println!("{:#?}", uart0.info());
 
     let (sender, receiver) = channel();
 
@@ -105,43 +99,43 @@ fn main() -> Result<(), Box<dyn Error>> {
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut line).unwrap();
         line.pop(); // pop away the new line
-        if sender.send(line).is_err() {
+        if line.is_empty() || line == "\n" || line == "~QUIT" || sender.send(line).is_err() {
             println!("EXITING THREAD!");
             return;
         }
     });
 
-    let mut uart0_writebuf = BufWriter::new(uart0);
-    let mut read_buf = String::new();
-    loop {
-        if uart0.read_to_string(&mut read_buf).unwrap() > 0 {
-            println!("arduino: \"{}\"", read_buf.escape_default());
-            read_buf.clear();
-        }
+    {
+        let mut uart0 = &handle.view().uart_channels[0];
+        let mut uart0_writebuf = BufWriter::new(uart0);
+        let mut read_buf = String::new();
+        loop {
+            if uart0.read_to_string(&mut read_buf).unwrap() > 0 {
+                println!("arduino: \"{}\"", read_buf.escape_default());
+                read_buf.clear();
+            }
 
-        match receiver.try_recv() {
-            Ok(line) => {
-                if line.is_empty() || line == "\n" || line == "~QUIT" {
+            match receiver.try_recv() {
+                Ok(line) => {
+                    let _ = uart0_writebuf.write(line.as_bytes());
+                }
+                Err(TryRecvError::Disconnected) => {
                     break;
                 }
-                let _ = uart0_writebuf.write(line.as_bytes());
+                _ => {}
             }
-            Err(TryRecvError::Disconnected) => {
-                println!("Channel disconnected");
+
+            thread::sleep(Duration::from_millis(1));
+
+            if let Err(exit_code) = handle.tick() {
                 break;
             }
-            _ => {}
+
+            let _ = uart0_writebuf.flush();
         }
-
-        let _ = uart0_writebuf.flush();
-
-        thread::sleep(Duration::from_millis(1));
     }
 
-    println!("stopping..");
-    drop(uart0_writebuf);
-    handle.stop();
-    println!("stopped");
+    println!("Stopped with exit code: {}", handle.stop());
 
     Ok(())
 }

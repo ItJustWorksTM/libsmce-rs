@@ -16,7 +16,6 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
     let mut smce_resources = PathBuf::from(env!("OUT_DIR"));
 
     let board_config = BoardConfig {
-        pins: vec![0, 1],
         gpio_drivers: vec![
             GpioDriver {
                 pin_id: 0,
@@ -69,17 +68,20 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     let mut view = handle.view();
 
-    view.digital_pin(0)
-        .expect("pin 0 doesnt exist :(")
-        .write(true);
+    view.pins
+        .get(0)
+        .expect("pin 0 doesn't exist :(")
+        .digital_write(true);
 
-    view.digital_pin(1)
-        .expect("pin 1 doesnt exist :(")
-        .write(false);
+    assert!(view.pins[0].digital_read());
+    view.pins[0].digital_write(false);
+    assert!(!view.pins[0].digital_read());
 
-    std::thread::sleep(Duration::from_secs(10));
+    view.pins.get(1).expect("pin 1 doesnt exist :(");
 
-    let mut uart = view.uart(0).unwrap();
+    std::thread::sleep(Duration::from_secs(1));
+
+    let mut uart = &view.uart_channels[0];
 
     let mut uart_out = String::new();
     uart.read_to_string(&mut uart_out);

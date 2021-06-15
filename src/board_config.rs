@@ -86,7 +86,6 @@ impl Default for FrameBuffer {
 
 #[derive(Default, Debug, Clone)]
 pub struct BoardConfig {
-    pub pins: Vec<u16>,
     pub gpio_drivers: Vec<GpioDriver>,
     pub uart_channels: Vec<UartChannel>,
     pub sd_cards: Vec<SecureDigitalStorage>,
@@ -97,7 +96,7 @@ impl BoardConfig {
     pub(crate) fn as_native(&self) -> UniquePtr<OpaqueBoardConfig> {
         unsafe {
             board_config_new(
-                &self.pins,
+                &self.gpio_drivers.iter().map(|a| a.pin_id).collect(),
                 self.gpio_drivers
                     .iter()
                     .map(|t| GpioDriverV {

@@ -30,10 +30,8 @@ use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use cxx::UniquePtr;
 
 use crate::board_config::{BoardConfig, GpioDriver};
-// use crate::board_view::BoardView;
 use crate::board_view::{
-    AnalogPin, AnalogPins, BoardView, DigitalPin, DigitalPins, FrameBuffer, FrameBuffers,
-    UartChannel, UartChannels,
+    BoardView, FrameBuffer, FrameBuffers, GpioPin, Pins, UartChannel, UartChannels,
 };
 use crate::ffi::{
     board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView, OpaqueVirtualPin,
@@ -43,7 +41,7 @@ use crate::sketch::Sketch;
 unsafe impl Send for OpaqueBoard {}
 
 pub struct Board {
-    internal: Option<(UniquePtr<OpaqueBoard>, BoardView)>,
+    internal: Option<(UnsafeCell<UniquePtr<OpaqueBoard>>, BoardView)>,
 }
 
 pub struct BoardHandle<'a> {
@@ -85,44 +83,21 @@ impl Board {
         let mut bv: UniquePtr<OpaqueBoardView> = unsafe { board.pin_mut().view() };
 
         let bvstr = BoardView {
-            digital_pins: DigitalPins {
+            pins: Pins {
                 inner: {
                     config
                         .gpio_drivers
                         .iter()
-                        .filter_map(|a| {
-                            a.digital_driver.as_ref().map(|_| {
-                                (
-                                    a.pin_id as usize,
-                                    DigitalPin {
-                                        inner: UnsafeCell::new(unsafe {
-                                            bv.pin_mut().get_pin(a.pin_id as usize)
-                                        }),
-                                        info: a.digital_driver.as_ref().unwrap().clone(),
-                                    },
-                                )
-                            })
-                        })
-                        .collect()
-                },
-            },
-            analog_pins: AnalogPins {
-                inner: {
-                    config
-                        .gpio_drivers
-                        .iter()
-                        .filter_map(|a| {
-                            a.analog_driver.as_ref().map(|_| {
-                                (
-                                    a.pin_id as usize,
-                                    AnalogPin {
-                                        inner: UnsafeCell::new(unsafe {
-                                            bv.pin_mut().get_pin(a.pin_id as usize)
-                                        }),
-                                        info: a.analog_driver.as_ref().unwrap().clone(),
-                                    },
-                                )
-                            })
+                        .map(|a| {
+                            (
+                                a.pin_id as usize,
+                                GpioPin {
+                                    inner: UnsafeCell::new(unsafe {
+                                        bv.pin_mut().get_pin(a.pin_id as usize)
+                                    }),
+                                    info: a.clone(),
+                                },
+                            )
                         })
                         .collect()
                 },
@@ -157,7 +132,7 @@ impl Board {
             },
         };
 
-        self.internal = Some((board, bvstr));
+        self.internal = Some((UnsafeCell::new(board), bvstr));
         Ok(self.handle().unwrap())
     }
 
@@ -184,52 +159,51 @@ pub enum BoardHandleStatus {
 impl BoardHandle<'_> {
     // unwrap is safe as we only exist when active
     #[doc(hidden)]
-    fn internal(&mut self) -> &mut (UniquePtr<OpaqueBoard>, BoardView) {
-        self.board.internal.as_mut().unwrap()
+    fn internal(&self) -> &(UnsafeCell<UniquePtr<OpaqueBoard>>, BoardView) {
+        self.board.internal.as_ref().unwrap()
     }
 
     pub fn status() -> BoardHandleStatus {
         todo!()
     }
 
-    pub fn suspend(&mut self) -> bool {
-        unsafe { self.internal().0.pin_mut().suspend() }
+    pub fn suspend(&self) -> bool {
+        unsafe { (*self.internal().0.get()).pin_mut().suspend() }
     }
 
-    pub fn resume(&mut self) -> bool {
-        unsafe { self.internal().0.pin_mut().resume() }
+    pub fn resume(&self) -> bool {
+        unsafe { (*self.internal().0.get()).pin_mut().resume() }
     }
 
-    pub fn view(&mut self) -> &BoardView {
+    pub fn view(&self) -> &BoardView {
         &self.internal().1
     }
 
     // Calls tick() once, if the sketch is still running we explicitly terminate
     pub fn stop(self) -> ExitCode {
-        match self.tick() {
-            Ok(mut handle) => {
-                assert!(unsafe { handle.internal().0.pin_mut().terminate() });
-                handle.board.internal = None;
+        let exit_code = match self.tick() {
+            Err(exit_code) => exit_code,
+            _ => {
+                unsafe { (*self.internal().0.get()).pin_mut().terminate() };
                 0
             }
-            Err(exit_code) => exit_code,
-        }
+        };
+        self.board.internal = None;
+        exit_code
     }
 
     // Checks whether the sketch has died, returning the exit code if it has,
-    pub fn tick(mut self) -> Result<Self, ExitCode> {
+    // handle will still be valid, but in unstable state.
+    pub fn tick(&self) -> Result<(), ExitCode> {
         match unsafe {
-            let x = self.internal().0.pin_mut().tick();
+            let x = (*self.internal().0.get()).pin_mut().tick();
             x
         } {
             ExitInfo {
                 exit_code,
                 exited: true,
-            } => {
-                self.board.internal = None;
-                Err(exit_code)
-            }
-            _ => Ok(self),
+            } => Err(exit_code),
+            _ => Ok(()),
         }
     }
 }

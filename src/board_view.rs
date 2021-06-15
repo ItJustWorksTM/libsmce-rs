@@ -37,7 +37,7 @@ use crate::ffi::OpaqueVirtualUart;
 use crate::ffi::{OpaqueBoard, OpaqueBoardView};
 
 use crate::board_config::{
-    AnalogDriver, DigitalDriver, FrameBuffer as FrameBufferInfo, UartChannel as UartChannelInfo,
+    FrameBuffer as FrameBufferInfo, GpioDriver as GpioDriverInfo, UartChannel as UartChannelInfo,
 };
 
 use std::collections::hash_map::Iter as MapIter;
@@ -53,38 +53,19 @@ unsafe impl Send for OpaqueVirtualUart {}
 // BoardView
 
 pub struct BoardView {
-    pub digital_pins: DigitalPins,
-    pub analog_pins: AnalogPins,
+    pub pins: Pins,
     pub uart_channels: UartChannels,
     pub frame_buffers: FrameBuffers,
 }
 
 // DigitalPins
 
-pub struct DigitalPins {
-    pub(crate) inner: HashMap<usize, DigitalPin>,
-}
-
-impl DigitalPins {
-    pub fn iter(&self) -> AnalogPinIterator {
-        todo!()
-    }
-
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    pub fn get(&self, pin: usize) -> Option<&DigitalPin> {
-        self.inner.get(&pin)
-    }
-}
-
 // AnalogPins
-pub struct AnalogPins {
-    pub(crate) inner: HashMap<usize, AnalogPin>,
+pub struct Pins {
+    pub(crate) inner: HashMap<usize, GpioPin>,
 }
 
-impl AnalogPins {
+impl Pins {
     pub fn iter(&self) -> AnalogPinIterator {
         AnalogPinIterator {
             inner_iter: self.inner.iter(),
@@ -95,13 +76,13 @@ impl AnalogPins {
         self.inner.len()
     }
 
-    pub fn get(&self, pin: usize) -> Option<&AnalogPin> {
+    pub fn get(&self, pin: usize) -> Option<&GpioPin> {
         self.inner.get(&pin)
     }
 }
 
-impl Index<usize> for AnalogPins {
-    type Output = AnalogPin;
+impl Index<usize> for Pins {
+    type Output = GpioPin;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.inner.index(&index)
@@ -109,11 +90,11 @@ impl Index<usize> for AnalogPins {
 }
 
 pub struct AnalogPinIterator<'a> {
-    inner_iter: MapIter<'a, usize, AnalogPin>,
+    inner_iter: MapIter<'a, usize, GpioPin>,
 }
 
 impl<'a> Iterator for AnalogPinIterator<'a> {
-    type Item = (&'a usize, &'a AnalogPin);
+    type Item = (&'a usize, &'a GpioPin);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner_iter.next()
@@ -188,43 +169,30 @@ impl Index<usize> for FrameBuffers {
 
 pub struct FrameBuffersIterator {}
 
-// Represents an digital pin, reads and writes can be considered atomic
-pub struct DigitalPin {
+pub struct GpioPin {
     pub(crate) inner: UnsafeCell<UniquePtr<OpaqueVirtualPin>>,
-    pub(crate) info: DigitalDriver,
+    pub(crate) info: GpioDriverInfo,
 }
 
-impl DigitalPin {
-    pub fn info(&self) -> &DigitalDriver {
-        todo!()
-    }
-
-    pub fn read(&self) -> bool {
-        unsafe { (*self.inner.get()).pin_mut().digital_read() }
-    }
-
-    pub fn write(&self, val: bool) {
-        unsafe { (*self.inner.get()).pin_mut().digital_write(val) }
-    }
-}
-
-// Represents an analog pin, reads and writes can be considered atomic
-pub struct AnalogPin {
-    pub(crate) inner: UnsafeCell<UniquePtr<OpaqueVirtualPin>>,
-    pub(crate) info: AnalogDriver,
-}
-
-impl AnalogPin {
-    pub fn info(&self) -> &AnalogDriver {
+impl GpioPin {
+    pub fn info(&self) -> &GpioDriverInfo {
         &self.info
     }
 
-    pub fn read(&self) -> u16 {
+    pub fn analog_read(&self) -> u16 {
         unsafe { (*self.inner.get()).pin_mut().analog_read() }
     }
 
-    pub fn write(&self, val: u16) {
+    pub fn analog_write(&self, val: u16) {
         unsafe { (*self.inner.get()).pin_mut().analog_write(val) }
+    }
+
+    pub fn digital_read(&self) -> bool {
+        unsafe { (*self.inner.get()).pin_mut().digital_read() }
+    }
+
+    pub fn digital_write(&self, val: bool) {
+        unsafe { (*self.inner.get()).pin_mut().digital_write(val) }
     }
 }
 
