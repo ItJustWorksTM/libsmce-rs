@@ -20,7 +20,7 @@
 #include "libsmce-rs/src/ffi/definitions.rs"
 #include "sketch_config.hxx"
 
-auto conf(const rust::Vec<rust::String>& vec) {
+auto conf(const auto& vec) {
     auto ret = std::vector<std::string>{};
     std::transform(vec.begin(), vec.end(), std::back_inserter(ret),
                    [](const auto& str) { return std::string{str}; });
@@ -44,10 +44,10 @@ auto conf(const LibraryV& libs) {
     return ret;
 }
 
-auto sketch_config_new(const rust::String& fqbn, const rust::Vec<rust::String>& extra_board_uris,
+auto sketch_config_new(rust::Str fqbn, rust::Slice<const rust::String> extra_board_uris,
                        LibraryV preproc_libs, LibraryV complink_libs,
-                       const rust::Vec<rust::String>& extra_compile_defs,
-                       const rust::Vec<rust::String>& extra_compile_opts)
+                       rust::Slice<const rust::String> extra_compile_defs,
+                       rust::Slice<const rust::String> extra_compile_opts)
     -> std::unique_ptr<OpaqueSketchConfig> {
     auto ret = smce::SketchConfig{};
     ret.fqbn = std::string{fqbn};

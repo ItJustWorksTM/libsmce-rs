@@ -16,6 +16,8 @@
  *
  */
 
+#![allow(clippy::missing_safety_doc)]
+
 pub use ffi::*;
 
 #[cxx::bridge]
@@ -133,12 +135,12 @@ pub mod ffi {
         pub(crate) type OpaqueSketchConfig;
 
         pub(crate) unsafe fn sketch_config_new(
-            fqbn: &String,
-            extra_board_uris: &Vec<String>,
+            fqbn: &str,
+            extra_board_uris: &[String],
             preproc_libs: LibraryV,
             complink_libs: LibraryV,
-            extra_compile_defs: &Vec<String>,
-            extra_compile_opts: &Vec<String>,
+            extra_compile_defs: &[String],
+            extra_compile_opts: &[String],
         ) -> UniquePtr<OpaqueSketchConfig>;
 
         include!("uuid.hxx");
@@ -165,7 +167,7 @@ pub mod ffi {
 
         type OpaqueBoardConfig;
         pub(crate) unsafe fn board_config_new(
-            pins: &Vec<u16>,
+            pins: Vec<u16>,
             gpio_drivers: Vec<GpioDriverV>,
             uart_channels: Vec<UartChannelV>,
             sd_cards: Vec<SecureDigitalStorageV>,

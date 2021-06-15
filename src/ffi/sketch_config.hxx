@@ -26,10 +26,10 @@
 struct LibraryV;
 using OpaqueSketchConfig = smce::SketchConfig;
 
-auto sketch_config_new(const rust::String& fqbn, const rust::Vec<rust::String>& extra_board_uris,
+auto sketch_config_new(const rust::Str fqbn, rust::Slice<const rust::String> extra_board_uris,
                        LibraryV preproc_libs, LibraryV complink_libs,
-                       const rust::Vec<rust::String>& extra_compile_defs,
-                       const rust::Vec<rust::String>& extra_compile_opts)
+                       rust::Slice<const rust::String> extra_compile_defs,
+                       rust::Slice<const rust::String> extra_compile_opts)
     -> std::unique_ptr<OpaqueSketchConfig>;
 
 #endif // LIBSMCE_RS_SKETCH_CONFIG_HXX

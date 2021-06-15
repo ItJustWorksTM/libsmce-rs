@@ -17,26 +17,18 @@
  */
 
 use std::cell::UnsafeCell;
-use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::marker::PhantomData;
-use std::ops::{Deref, Index};
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 
 use cxx::UniquePtr;
 
-use crate::board_config::{BoardConfig, GpioDriver};
+use crate::board_config::BoardConfig;
 use crate::board_view::{
     BoardView, FrameBuffer, FrameBuffers, GpioPin, Pins, UartChannel, UartChannels,
 };
-use crate::ffi::{
-    board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView, OpaqueVirtualPin,
-};
+use crate::ffi::{board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView};
 use crate::sketch::Sketch;
+use std::error::Error;
 
 unsafe impl Send for OpaqueBoard {}
 
@@ -195,10 +187,7 @@ impl BoardHandle<'_> {
     // Checks whether the sketch has died, returning the exit code if it has,
     // handle will still be valid, but in unstable state.
     pub fn tick(&self) -> Result<(), ExitCode> {
-        match unsafe {
-            let x = (*self.internal().0.get()).pin_mut().tick();
-            x
-        } {
+        match unsafe { (*self.internal().0.get()).pin_mut().tick() } {
             ExitInfo {
                 exit_code,
                 exited: true,

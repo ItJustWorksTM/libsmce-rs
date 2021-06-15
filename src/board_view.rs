@@ -18,23 +18,16 @@
 
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt::{Debug, Formatter};
-use std::io::{ErrorKind, Read, Write};
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut, Index};
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError, RwLock, RwLockReadGuard, Weak};
-use std::{fmt, io};
+use std::io;
+use std::io::{Read, Write};
+use std::ops::Index;
 
 use cxx::UniquePtr;
 
-use crate::board::BoardHandle;
+use crate::ffi::OpaqueBoardView;
 use crate::ffi::OpaqueFramebuffer;
 use crate::ffi::OpaqueVirtualPin;
 use crate::ffi::OpaqueVirtualUart;
-use crate::ffi::{OpaqueBoard, OpaqueBoardView};
 
 use crate::board_config::{
     FrameBuffer as FrameBufferInfo, GpioDriver as GpioDriverInfo, UartChannel as UartChannelInfo,
@@ -74,6 +67,10 @@ impl Pins {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn get(&self, pin: usize) -> Option<&GpioPin> {
@@ -117,6 +114,10 @@ impl UartChannels {
     pub fn len(&self) -> usize {
         self.inner.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl Index<usize> for UartChannels {
@@ -152,6 +153,10 @@ impl FrameBuffers {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn get(&self, key: usize) -> Option<&FrameBuffer> {

@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-auto board_config_new(const rust::Vec<uint16_t>& pins, rust::Vec<GpioDriverV> gpio_drivers,
+auto board_config_new(rust::Vec<uint16_t> pins, rust::Vec<GpioDriverV> gpio_drivers,
                       rust::Vec<UartChannelV> uart_channels, rust::Vec<SecureDigitalStorageV> sd_cards,
                       rust::Vec<FrameBufferV> frame_buffers) -> std::unique_ptr<OpaqueBoardConfig> {
     auto ret = smce::BoardConfig{};

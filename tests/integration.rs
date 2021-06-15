@@ -10,6 +10,7 @@ use libsmce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriv
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::{Library, SketchConfig};
 use libsmce_rs::toolchain::Toolchain;
+use std::collections::HashMap;
 
 #[test]
 fn test_compile() -> Result<(), Box<dyn Error>> {

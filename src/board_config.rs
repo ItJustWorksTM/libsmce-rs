@@ -96,7 +96,7 @@ impl BoardConfig {
     pub(crate) fn as_native(&self) -> UniquePtr<OpaqueBoardConfig> {
         unsafe {
             board_config_new(
-                &self.gpio_drivers.iter().map(|a| a.pin_id).collect(),
+                self.gpio_drivers.iter().map(|a| a.pin_id).collect(),
                 self.gpio_drivers
                     .iter()
                     .map(|t| GpioDriverV {
