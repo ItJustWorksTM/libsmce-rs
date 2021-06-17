@@ -16,58 +16,94 @@
  *
  */
 
-use std::fmt;
+use std::cell::UnsafeCell;
 use std::fmt::{Debug, Formatter};
+use std::io::{ErrorKind, Read};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::{fmt, io};
 
 use cxx::UniquePtr;
 
 use crate::ffi::{toolchain_new, OpaqueToolchain, ToolchainResult};
 use crate::sketch::Sketch;
 
+unsafe impl Send for OpaqueToolchain {}
+
+// This is slightly dangerous, but is safe if the log reader only uses `read_build_log` as that is explicitly thread safe.
+unsafe impl Sync for ToolchainInternal {}
+
+pub fn toolchain(resource_dir: &Path) -> (Toolchain, BuildLogReader) {
+    let internal = Arc::new(ToolchainInternal {
+        internal: UnsafeCell::new(unsafe { toolchain_new(resource_dir.to_str().unwrap_or("")) }),
+        finished: AtomicBool::new(false),
+    });
+
+    (
+        Toolchain {
+            internal: internal.clone(),
+        },
+        BuildLogReader {
+            internal: internal.clone(),
+        },
+    )
+}
+
+struct ToolchainInternal {
+    internal: UnsafeCell<UniquePtr<OpaqueToolchain>>,
+    finished: AtomicBool,
+}
+
 pub struct Toolchain {
-    internal: UniquePtr<OpaqueToolchain>,
+    internal: Arc<ToolchainInternal>,
+}
+
+pub struct BuildLogReader {
+    internal: Arc<ToolchainInternal>,
+}
+
+impl Read for BuildLogReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let read = unsafe {
+            (*self.internal.internal.get())
+                .pin_mut()
+                .read_build_log(buf)
+        };
+        // println!("read {}", read);
+
+        // Only bail if we have no bytes to read and the compile has finished
+        if read == 0 && self.internal.finished.load(Ordering::SeqCst) {
+            Err(io::Error::new(
+                ErrorKind::ConnectionAborted,
+                "Compile finished",
+            ))
+        } else {
+            Ok(read)
+        }
+    }
 }
 
 impl Toolchain {
-    pub fn new(resource_dir: &Path) -> Result<Self, ToolchainResult> {
-        let mut internal = unsafe { toolchain_new(resource_dir.to_str().unwrap_or("")) };
-        match unsafe { internal.pin_mut().check_suitable_environment() } {
-            ToolchainResult::Ok => Ok(Toolchain { internal }),
-            res => Err(res),
-        }
-    }
-
-    pub fn compile(
-        sketch: &mut Sketch,
-        resource_dir: &Path,
-    ) -> (Result<(), ToolchainResult>, String) {
-        match Self::new(resource_dir) {
-            Ok(mut tc) => (
-                match unsafe { tc.internal.pin_mut().compile(&mut sketch.internal) } {
+    pub fn compile(self, sketch: &mut Sketch) -> Result<(), ToolchainResult> {
+        let ret = match unsafe {
+            (*self.internal.internal.get())
+                .pin_mut()
+                .check_suitable_environment()
+        } {
+            ToolchainResult::Ok => {
+                match unsafe {
+                    (*self.internal.internal.get())
+                        .pin_mut()
+                        .compile(&mut sketch.internal)
+                } {
                     ToolchainResult::Ok => Ok(()),
-                    res => Err(res),
-                },
-                unsafe { tc.internal.pin_mut().read_build_log() },
-            ),
-            Err(res) => (Err(res), String::new()),
-        }
-    }
-
-    pub fn resource_dir(&self) -> &Path {
-        unsafe { Path::new(self.internal.resource_dir()) }
-    }
-
-    pub fn cmake_path(&self) -> &Path {
-        unsafe { Path::new(self.internal.cmake_path()) }
-    }
-}
-
-impl Debug for Toolchain {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpaqueToolchain")
-            .field("resource_dir", &self.resource_dir().to_path_buf())
-            .field("cmake_path", &self.cmake_path().to_path_buf())
-            .finish()
+                    err => Err(err),
+                }
+            }
+            e => Err(e),
+        };
+        self.internal.finished.store(true, Ordering::SeqCst);
+        ret
     }
 }

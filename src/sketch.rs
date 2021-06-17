@@ -25,6 +25,8 @@ use cxx::UniquePtr;
 use crate::ffi::{sketch_new, OpaqueSketch, Uuid};
 use crate::sketch_config::SketchConfig;
 
+unsafe impl Send for OpaqueSketch {}
+
 pub struct Sketch {
     pub(crate) internal: UniquePtr<OpaqueSketch>,
     pub(crate) config: SketchConfig,

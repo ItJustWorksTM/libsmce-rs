@@ -21,6 +21,8 @@
 #include "toolchain.hxx"
 
 #include <iostream>
+#include <algorithm>
+#include <cstring>
 
 using smce::Toolchain;
 
@@ -39,13 +41,13 @@ auto OpaqueToolchain::compile(std::unique_ptr<OpaqueSketch>& sketch) -> Toolchai
     const auto ret = Toolchain::compile(*sketch);
     return static_cast<ToolchainResult>(ret.value());
 }
-auto OpaqueToolchain::read_build_log() -> rust::String {
-    try {
-        auto log = Toolchain::build_log();
-        auto str = rust::String{log.second};
-        log.second.clear();
-        return str;
-    } catch (...) {
-    } // rust::String can bail on non utf8 input
-    return rust::String{};
+
+
+auto OpaqueToolchain::read_build_log(rust::Slice<uint8_t> buf) -> size_t {
+    auto log = Toolchain::build_log();
+    const auto len = std::min(buf.size(), log.second.size());
+
+    std::memcpy(buf.data(), log.second.data(), len);
+    log.second.erase(0, len);
+    return len;
 }

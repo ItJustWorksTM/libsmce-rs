@@ -29,7 +29,7 @@ use libsmce_rs::board_config::{BoardConfig, SecureDigitalStorage, UartChannel};
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::Library::RemoteArduinoLibrary;
 use libsmce_rs::sketch_config::SketchConfig;
-use libsmce_rs::toolchain::Toolchain;
+use libsmce_rs::toolchain::toolchain;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -61,12 +61,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     )
     .expect("Failed to create Sketch");
 
-    println!("Compiling...");
+    let (tc, mut log) = toolchain(&home);
 
-    let (res, log) = Toolchain::compile(&mut sketch, &home);
+    let compile_handle = thread::spawn(move || {
+        println!("Compiling...");
+        let res = tc.compile(&mut sketch);
+        (sketch, res)
+    });
+
+    let mut log_str = String::new();
+    while let Ok(read) = log.read_to_string(&mut log_str) {
+        if read > 0 {
+            print!("{}", log_str);
+            log_str.clear();
+        }
+    }
+
+    let (sketch, res) = compile_handle.join().unwrap();
 
     if let Err(ec) = res {
-        println!("{}", log);
         return Err(format!("Failed to compile: {:?}", ec).into());
     }
 

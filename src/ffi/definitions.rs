@@ -161,7 +161,10 @@ pub mod ffi {
             self: Pin<&mut OpaqueToolchain>,
             sketch: &mut UniquePtr<OpaqueSketch>,
         ) -> ToolchainResult;
-        pub(crate) unsafe fn read_build_log(self: Pin<&mut OpaqueToolchain>) -> String;
+        pub(crate) unsafe fn read_build_log(
+            self: Pin<&mut OpaqueToolchain>,
+            buf: &mut [u8],
+        ) -> usize;
 
         include!("board_config.hxx");
 
@@ -237,8 +240,8 @@ pub mod ffi {
         pub(crate) unsafe fn width(self: Pin<&mut OpaqueFramebuffer>) -> u16;
         pub(crate) unsafe fn height(self: Pin<&mut OpaqueFramebuffer>) -> u16;
         pub(crate) unsafe fn freq(self: Pin<&mut OpaqueFramebuffer>) -> u8;
-        pub(crate) unsafe fn write_rgb888(self: Pin<&mut OpaqueFramebuffer>, buf: &[u8]) -> usize;
-        pub(crate) unsafe fn write_rgb444(self: Pin<&mut OpaqueFramebuffer>, buf: &[u8]) -> usize;
+        pub(crate) unsafe fn write_rgb888(self: Pin<&mut OpaqueFramebuffer>, buf: &[u8]) -> bool;
+        pub(crate) unsafe fn write_rgb444(self: Pin<&mut OpaqueFramebuffer>, buf: &[u8]) -> bool;
 
     }
 }

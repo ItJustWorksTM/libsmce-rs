@@ -65,9 +65,9 @@ auto OpaqueFramebuffer::needs_vertical_flip() -> bool { return needs_vertical_fl
 auto OpaqueFramebuffer::width() -> uint16_t { return width(); }
 auto OpaqueFramebuffer::height() -> uint16_t { return height(); }
 auto OpaqueFramebuffer::freq() -> uint8_t { return freq(); }
-auto OpaqueFramebuffer::write_rgb888(rust::Slice<const uint8_t> buf) -> size_t {
+auto OpaqueFramebuffer::write_rgb888(rust::Slice<const uint8_t> buf) -> bool {
     return smce::FrameBuffer::write_rgb888({reinterpret_cast<const std::byte*>(buf.data()), buf.size()});
 }
-auto OpaqueFramebuffer::write_rgb444(rust::Slice<const uint8_t> buf) -> size_t {
+auto OpaqueFramebuffer::write_rgb444(rust::Slice<const uint8_t> buf) -> bool {
     return smce::FrameBuffer::write_rgb444({reinterpret_cast<const std::byte*>(buf.data()), buf.size()});
 }

@@ -49,8 +49,8 @@ struct OpaqueFramebuffer : smce::FrameBuffer {
     auto width() -> uint16_t;
     auto height() -> uint16_t;
     auto freq() -> uint8_t;
-    auto write_rgb888(rust::Slice<const uint8_t> buf) -> size_t;
-    auto write_rgb444(rust::Slice<const uint8_t> buf) -> size_t;
+    auto write_rgb888(rust::Slice<const uint8_t> buf) -> bool;
+    auto write_rgb444(rust::Slice<const uint8_t> buf) -> bool;
 };
 
 struct OpaqueBoardView : smce::BoardView {

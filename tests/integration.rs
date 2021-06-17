@@ -9,7 +9,7 @@ use libsmce_rs::board::Board;
 use libsmce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver, UartChannel};
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::{Library, SketchConfig};
-use libsmce_rs::toolchain::Toolchain;
+use libsmce_rs::toolchain::{toolchain, Toolchain};
 use std::collections::HashMap;
 
 #[test]
@@ -57,8 +57,14 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     assert!(sketch.source().exists());
 
-    let (compile_res, log) = Toolchain::compile(&mut sketch, &smce_resources);
-    println!("{}", log);
+    let (tc, mut log) = toolchain(&smce_resources);
+    let compile_res = tc.compile(&mut sketch);
+
+    println!("{}", {
+        let mut log_buf = String::new();
+        log.read_to_string(&mut log_buf);
+        log_buf
+    });
 
     assert!(compile_res.is_ok());
 

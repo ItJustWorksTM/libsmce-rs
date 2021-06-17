@@ -33,7 +33,7 @@ struct OpaqueToolchain : public smce::Toolchain {
     auto cmake_path() const -> rust::Str;
     auto check_suitable_environment() -> ToolchainResult;
     auto compile(std::unique_ptr<OpaqueSketch>& sketch) -> ToolchainResult;
-    auto read_build_log() -> rust::String;
+    auto read_build_log(rust::Slice<uint8_t> buf) -> size_t;
 };
 
 auto toolchain_new(rust::Str resource_dir) -> std::unique_ptr<OpaqueToolchain>;
