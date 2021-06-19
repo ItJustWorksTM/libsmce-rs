@@ -17,6 +17,7 @@
  */
 
 use std::cell::UnsafeCell;
+use std::convert::TryFrom;
 use std::fmt::{Debug, Formatter};
 use std::io::{ErrorKind, Read};
 use std::path::Path;
@@ -25,14 +26,58 @@ use std::sync::Arc;
 use std::{fmt, io};
 
 use cxx::UniquePtr;
+use thiserror::Error;
 
-use crate::ffi::{toolchain_new, OpaqueToolchain, ToolchainResult};
+use crate::ffi::{toolchain_new, OpaqueToolchain, OpaqueToolchainResult};
 use crate::sketch::Sketch;
 
 unsafe impl Send for OpaqueToolchain {}
 
 // This is slightly dangerous, but is safe if the log reader only uses `read_build_log` as that is explicitly thread safe.
 unsafe impl Sync for ToolchainInternal {}
+
+#[derive(Clone, Copy, Error, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
+pub enum ToolchainError {
+    #[error("Resource directory does not exist")]
+    ResdirAbsent,
+    #[error("Resource directory is a file")]
+    ResdirFile,
+    #[error("Resource directory empty")]
+    ResdirEmpty,
+    #[error("CMake not found in PATH")]
+    CmakeNotFound,
+    #[error("??")]
+    CmakeUnknownOutput,
+    #[error("??")]
+    CmakeFailing,
+    #[error("Sketch path is invalid")]
+    SketchInvalid,
+    #[error("CMake configure failed")]
+    ConfigureFailed,
+    #[error("CMake build failed")]
+    BuildFailed,
+    #[error("Generic failure")]
+    Generic = 255,
+}
+
+impl Into<Result<(), ToolchainError>> for OpaqueToolchainResult {
+    fn into(self) -> Result<(), ToolchainError> {
+        Err(match self {
+            OpaqueToolchainResult::Ok => return Ok(()),
+            OpaqueToolchainResult::ResdirAbsent => ToolchainError::ResdirAbsent,
+            OpaqueToolchainResult::ResdirFile => ToolchainError::ResdirFile,
+            OpaqueToolchainResult::ResdirEmpty => ToolchainError::ResdirEmpty,
+            OpaqueToolchainResult::CmakeNotFound => ToolchainError::CmakeNotFound,
+            OpaqueToolchainResult::CmakeUnknownOutput => ToolchainError::CmakeUnknownOutput,
+            OpaqueToolchainResult::CmakeFailing => ToolchainError::CmakeFailing,
+            OpaqueToolchainResult::SketchInvalid => ToolchainError::SketchInvalid,
+            OpaqueToolchainResult::ConfigureFailed => ToolchainError::ConfigureFailed,
+            OpaqueToolchainResult::BuildFailed => ToolchainError::BuildFailed,
+            _ => ToolchainError::Generic,
+        })
+    }
+}
 
 pub fn toolchain(resource_dir: &Path) -> (Toolchain, BuildLogReader) {
     let internal = Arc::new(ToolchainInternal {
@@ -85,25 +130,27 @@ impl Read for BuildLogReader {
 }
 
 impl Toolchain {
-    pub fn compile(self, sketch: &mut Sketch) -> Result<(), ToolchainResult> {
-        let ret = match unsafe {
+    fn check_suitable_env(&self) -> Result<(), ToolchainError> {
+        unsafe {
             (*self.internal.internal.get())
                 .pin_mut()
                 .check_suitable_environment()
-        } {
-            ToolchainResult::Ok => {
-                match unsafe {
-                    (*self.internal.internal.get())
-                        .pin_mut()
-                        .compile(&mut sketch.internal)
-                } {
-                    ToolchainResult::Ok => Ok(()),
-                    err => Err(err),
-                }
+        }
+        .into()
+    }
+
+    pub fn compile(self, sketch: &mut Sketch) -> Result<(), ToolchainError> {
+        let ret = self.check_suitable_env().and_then(|_| {
+            unsafe {
+                (*self.internal.internal.get())
+                    .pin_mut()
+                    .compile(&mut sketch.internal)
             }
-            e => Err(e),
-        };
+            .into()
+        });
+
         self.internal.finished.store(true, Ordering::SeqCst);
+
         ret
     }
 }

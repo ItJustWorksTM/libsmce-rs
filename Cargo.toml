@@ -10,8 +10,10 @@ categories = ["external-ffi-bindings"]
 
 [dependencies]
 cxx = { version = "1.0", features = ["c++20"] }
-anyhow = "1.0"
 thiserror = "1.0"
+
+[dev-dependencies]
+anyhow = "1.0"
 
 [build-dependencies]
 cxx-build = "1.0"

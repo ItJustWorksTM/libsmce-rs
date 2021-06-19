@@ -41,7 +41,7 @@ pub mod ffi {
     }
 
     #[derive(Debug)]
-    pub(crate) enum ToolchainResult {
+    pub(crate) enum OpaqueToolchainResult {
         Ok,
         ResdirAbsent,
         ResdirFile,
@@ -156,11 +156,11 @@ pub mod ffi {
         pub(crate) unsafe fn cmake_path<'a>(self: &'a OpaqueToolchain) -> &'a str;
         pub(crate) unsafe fn check_suitable_environment(
             self: Pin<&mut OpaqueToolchain>,
-        ) -> ToolchainResult;
+        ) -> OpaqueToolchainResult;
         pub(crate) unsafe fn compile(
             self: Pin<&mut OpaqueToolchain>,
             sketch: &mut UniquePtr<OpaqueSketch>,
-        ) -> ToolchainResult;
+        ) -> OpaqueToolchainResult;
         pub(crate) unsafe fn read_build_log(
             self: Pin<&mut OpaqueToolchain>,
             buf: &mut [u8],

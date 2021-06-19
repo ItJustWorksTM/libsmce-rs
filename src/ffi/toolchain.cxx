@@ -31,15 +31,22 @@ auto toolchain_new(rust::Str resource_dir) -> std::unique_ptr<OpaqueToolchain> {
     return std::make_unique<OpaqueToolchain>(smce::stdfs::path{res_sv});
 }
 
-auto OpaqueToolchain::resource_dir() const -> rust::Str { return {Toolchain::resource_dir().c_str()}; }
-auto OpaqueToolchain::cmake_path() const -> rust::Str { return {Toolchain::cmake_path().c_str()}; }
-auto OpaqueToolchain::check_suitable_environment() -> ToolchainResult {
-    return static_cast<ToolchainResult>(Toolchain::check_suitable_environment().value());
+// TODO: somehow pass along the message isntead of the code
+auto to_tc_result(const std::error_code& erc) -> OpaqueToolchainResult {
+    if (erc.value() == 0 || strcmp(erc.category().name(), "smce.toolchain") == 0)
+        return static_cast<OpaqueToolchainResult>(erc.value());
+    return OpaqueToolchainResult::Generic;
 }
 
-auto OpaqueToolchain::compile(std::unique_ptr<OpaqueSketch>& sketch) -> ToolchainResult {
+auto OpaqueToolchain::resource_dir() const -> rust::Str { return {Toolchain::resource_dir().c_str()}; }
+auto OpaqueToolchain::cmake_path() const -> rust::Str { return {Toolchain::cmake_path().c_str()}; }
+auto OpaqueToolchain::check_suitable_environment() -> OpaqueToolchainResult {
+    return to_tc_result(Toolchain::check_suitable_environment());
+}
+
+auto OpaqueToolchain::compile(std::unique_ptr<OpaqueSketch>& sketch) -> OpaqueToolchainResult {
     const auto ret = Toolchain::compile(*sketch);
-    return static_cast<ToolchainResult>(ret.value());
+    return to_tc_result(ret);
 }
 
 

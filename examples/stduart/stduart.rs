@@ -31,13 +31,17 @@ use libsmce_rs::sketch_config::Library::RemoteArduinoLibrary;
 use libsmce_rs::sketch_config::SketchConfig;
 use libsmce_rs::toolchain::toolchain;
 
-fn main() -> Result<(), Box<dyn Error>> {
+use anyhow::anyhow;
+
+fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     println!("{:?}", args);
 
     if args.len() != 3 {
-        return Err("Usage:  <fully-qualified-board-name> <path-to-sketch>".into());
+        return Err(anyhow!(
+            "Usage:  <fully-qualified-board-name> <path-to-sketch>"
+        ));
     }
 
     let home = PathBuf::from(env!("OUT_DIR"));
@@ -79,9 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let (sketch, res) = compile_handle.join().unwrap();
 
-    if let Err(ec) = res {
-        return Err(format!("Failed to compile: {:?}", ec).into());
-    }
+    res?;
 
     println!("Done");
 

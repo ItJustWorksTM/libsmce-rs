@@ -24,15 +24,15 @@
 #include <rust/cxx.h>
 #include "sketch.hxx"
 
-enum class ToolchainResult : uint8_t;
+enum class OpaqueToolchainResult : uint8_t;
 
 struct OpaqueToolchain : public smce::Toolchain {
     using smce::Toolchain::Toolchain;
 
     auto resource_dir() const -> rust::Str;
     auto cmake_path() const -> rust::Str;
-    auto check_suitable_environment() -> ToolchainResult;
-    auto compile(std::unique_ptr<OpaqueSketch>& sketch) -> ToolchainResult;
+    auto check_suitable_environment() -> OpaqueToolchainResult;
+    auto compile(std::unique_ptr<OpaqueSketch>& sketch) -> OpaqueToolchainResult;
     auto read_build_log(rust::Slice<uint8_t> buf) -> size_t;
 };
 

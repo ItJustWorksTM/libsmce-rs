@@ -148,6 +148,8 @@ pub enum BoardHandleStatus {
     Suspended,
 }
 
+pub struct BoardLogReader {}
+
 impl BoardHandle<'_> {
     // unwrap is safe as we only exist when active
     #[doc(hidden)]
@@ -169,6 +171,10 @@ impl BoardHandle<'_> {
 
     pub fn view(&self) -> &BoardView {
         &self.internal().1
+    }
+
+    pub fn log(&self) -> &BoardLogReader {
+        todo!()
     }
 
     // Calls tick() once, if the sketch is still running we explicitly terminate
