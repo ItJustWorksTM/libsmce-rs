@@ -30,6 +30,7 @@ use thiserror::Error;
 
 use crate::ffi::{toolchain_new, OpaqueToolchain, OpaqueToolchainResult};
 use crate::sketch::Sketch;
+use std::marker::PhantomData;
 
 unsafe impl Send for OpaqueToolchain {}
 
@@ -79,22 +80,6 @@ impl Into<Result<(), ToolchainError>> for OpaqueToolchainResult {
     }
 }
 
-pub fn toolchain(resource_dir: &Path) -> (Toolchain, BuildLogReader) {
-    let internal = Arc::new(ToolchainInternal {
-        internal: UnsafeCell::new(unsafe { toolchain_new(resource_dir.to_str().unwrap_or("")) }),
-        finished: AtomicBool::new(false),
-    });
-
-    (
-        Toolchain {
-            internal: internal.clone(),
-        },
-        BuildLogReader {
-            internal: internal.clone(),
-        },
-    )
-}
-
 struct ToolchainInternal {
     internal: UnsafeCell<UniquePtr<OpaqueToolchain>>,
     finished: AtomicBool,
@@ -102,7 +87,12 @@ struct ToolchainInternal {
 
 pub struct Toolchain {
     internal: Arc<ToolchainInternal>,
+    // Toolchain is not intended to be thread safe so explicitly block Sync
+    _unsync: PhantomData<*const ()>,
 }
+
+// Toolchain is Send since it just stores an Arc
+unsafe impl Send for Toolchain {}
 
 pub struct BuildLogReader {
     internal: Arc<ToolchainInternal>,
@@ -130,6 +120,25 @@ impl Read for BuildLogReader {
 }
 
 impl Toolchain {
+    pub fn new(resource_dir: &Path) -> (Toolchain, BuildLogReader) {
+        let internal = Arc::new(ToolchainInternal {
+            internal: UnsafeCell::new(unsafe {
+                toolchain_new(resource_dir.to_str().unwrap_or(""))
+            }),
+            finished: AtomicBool::new(false),
+        });
+
+        (
+            Toolchain {
+                internal: internal.clone(),
+                _unsync: PhantomData,
+            },
+            BuildLogReader {
+                internal: internal.clone(),
+            },
+        )
+    }
+
     fn check_suitable_env(&self) -> Result<(), ToolchainError> {
         unsafe {
             (*self.internal.internal.get())

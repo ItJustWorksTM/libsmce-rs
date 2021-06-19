@@ -29,9 +29,9 @@ use libsmce_rs::board_config::{BoardConfig, SecureDigitalStorage, UartChannel};
 use libsmce_rs::sketch::Sketch;
 use libsmce_rs::sketch_config::Library::RemoteArduinoLibrary;
 use libsmce_rs::sketch_config::SketchConfig;
-use libsmce_rs::toolchain::toolchain;
 
 use anyhow::anyhow;
+use libsmce_rs::toolchain::Toolchain;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
     )
     .expect("Failed to create Sketch");
 
-    let (tc, mut log) = toolchain(&home);
+    let (tc, mut log) = Toolchain::new(&home);
 
     let compile_handle = thread::spawn(move || {
         println!("Compiling...");
