@@ -14,7 +14,7 @@ jobs:
       CC: gcc-10
       CXX: g++-10
     steps:
-      - name: Install deps
+      - name: Deps
         run: |
           sudo apt update
           sudo apt upgrade
@@ -23,8 +23,6 @@ jobs:
           cmake --version
           brew install arduino-cli
           arduino-cli version
-      - name: Install libSMCE
-        run: |
           echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
           wget --output-document libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-GNU.sh
           chmod +x libsmce.sh
@@ -36,13 +34,18 @@ jobs:
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
-      - name: Run cargo build
+      - name: Builduild
         uses: actions-rs/cargo@v1
         with:
           command: build
-      - name: Run cargo test
+          args: --all-targets
+      - name: Clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-targets
+      - name: Test
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: -- --nocapture
-
