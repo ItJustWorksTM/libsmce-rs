@@ -18,6 +18,8 @@
 
 #include "board_view.hxx"
 
+#include <iostream>
+
 using smce::BoardView;
 
 template<class T>
@@ -52,6 +54,7 @@ auto OpaqueVirtualUart::readable() -> size_t { return tx().size(); }
 auto OpaqueVirtualUart::max_read() -> size_t { return tx().max_size(); }
 auto OpaqueVirtualUart::max_write() -> size_t { return rx().max_size(); }
 auto OpaqueVirtualUart::read(rust::Slice<uint8_t> buf) -> size_t {
+    std::cout << "buf size: " << buf.size() << "\n";
     return tx().read({reinterpret_cast<char*>(buf.data()), buf.size()});
 }
 auto OpaqueVirtualUart::write(rust::Slice<const uint8_t> buf) -> size_t {

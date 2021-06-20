@@ -217,7 +217,12 @@ impl UartChannel {
 impl Read for &UartChannel {
     // Will never fail, expect 0 size reads.
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        unsafe { Ok((*self.inner.get()).pin_mut().read(buf)) }
+        println!("{:?}", buf);
+        let read = unsafe { (*self.inner.get()).pin_mut().read(buf) };
+        println!("{:?}", buf);
+
+        println!("read: {}", read);
+        Ok(read)
     }
 }
 

@@ -98,9 +98,9 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
     let mut uart = &view.uart_channels[0];
 
     let mut uart_out = String::new();
-    uart.read_to_string(&mut uart_out)?;
+    let read = uart.read_to_string(&mut uart_out)?;
 
-    println!("UART:\n{}", uart_out);
+    println!("UART ({}):\n{}", read, uart_out);
 
     assert_eq!(handle.stop(), 0);
 
