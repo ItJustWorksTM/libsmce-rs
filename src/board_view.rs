@@ -17,24 +17,22 @@
  */
 
 use std::cell::UnsafeCell;
+use std::collections::hash_map::Iter as MapIter;
 use std::collections::HashMap;
 use std::io;
 use std::io::{Read, Write};
 use std::ops::Index;
+use std::slice::Iter as VecIter;
 
 use cxx::UniquePtr;
-
-use crate::ffi::OpaqueBoardView;
-use crate::ffi::OpaqueFramebuffer;
-use crate::ffi::OpaqueVirtualPin;
-use crate::ffi::OpaqueVirtualUart;
 
 use crate::board_config::{
     FrameBuffer as FrameBufferInfo, GpioDriver as GpioDriverInfo, UartChannel as UartChannelInfo,
 };
-
-use std::collections::hash_map::Iter as MapIter;
-use std::slice::Iter as VecIter;
+use crate::ffi::OpaqueBoardView;
+use crate::ffi::OpaqueFramebuffer;
+use crate::ffi::OpaqueVirtualPin;
+use crate::ffi::OpaqueVirtualUart;
 
 // TODO: put this in definitions.rs
 
@@ -217,20 +215,7 @@ impl UartChannel {
 impl Read for &UartChannel {
     // Will never fail, expect 0 size reads.
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        println!("{:?}", buf);
-        let read = unsafe {
-            assert!(!(*self.inner.get()).is_null());
-            println!("reee");
-            (*self.inner.get()).pin_mut();
-            println!("ree2");
-            let mut t = (*self.inner.get()).pin_mut();
-            println!("ree3");
-            t.read(buf)
-        };
-        println!("{:?}", buf);
-
-        println!("read: {}", read);
-        Ok(read)
+        Ok(unsafe { (*self.inner.get()).pin_mut().read(buf) })
     }
 }
 
