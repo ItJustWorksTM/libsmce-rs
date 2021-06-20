@@ -223,7 +223,9 @@ impl Read for &UartChannel {
             println!("reee");
             (*self.inner.get()).pin_mut();
             println!("ree2");
-            (*self.inner.get()).pin_mut().read(buf)
+            let mut t = (*self.inner.get()).pin_mut();
+            println!("ree3");
+            t.read(buf)
         };
         println!("{:?}", buf);
 

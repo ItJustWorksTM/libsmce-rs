@@ -101,7 +101,11 @@ impl Board {
                     .iter()
                     .enumerate()
                     .map(|(i, info)| UartChannel {
-                        inner: UnsafeCell::new(unsafe { bv.pin_mut().get_uart(i) }),
+                        inner: UnsafeCell::new({
+                            let ret = unsafe { bv.pin_mut().get_uart(i) };
+                            assert!(!ret.is_null());
+                            ret
+                        }),
                         info: info.clone(),
                     })
                     .collect(),

@@ -55,7 +55,24 @@ auto OpaqueVirtualUart::max_read() -> size_t { return tx().max_size(); }
 auto OpaqueVirtualUart::max_write() -> size_t { return rx().max_size(); }
 auto OpaqueVirtualUart::read(rust::Slice<uint8_t> buf) -> size_t {
     std::cout << "buf size: " << buf.size() << "\n";
-    return tx().read({reinterpret_cast<char*>(buf.data()), buf.size()});
+    auto tx = smce::VirtualUart::tx();
+    std::cout << "a\n";
+    std::cout << "exists: " << tx.exists() << std::endl;
+
+    *buf.data() = 69;
+    // ??
+
+    std::span buf_span = {reinterpret_cast<char*>(buf.data()), buf.size() - 1};
+    std::cout << "[";
+    for (auto x : buf_span)
+        std::cout << static_cast<int>(x) << ", ";
+    std::cout << "] ! CPP " << buf_span.size() << std::endl;
+    static_assert(sizeof(uint8_t) == sizeof(char));
+    std::cout << "wtf: " << tx.exists() << std::endl;
+    auto tmp_buf = std::array<char, 4>{};
+    auto read = tx.read(tmp_buf);
+    std::cout << "cpp read: " << read << std::endl;
+    return read;
 }
 auto OpaqueVirtualUart::write(rust::Slice<const uint8_t> buf) -> size_t {
     return rx().write({reinterpret_cast<const char*>(buf.data()), buf.size()});

@@ -50,7 +50,7 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
     };
 
     let mut sketch =
-        Sketch::new(Path::new("./tests/sketches/mqtt/mqtt.ino"), sketch_config).unwrap();
+        Sketch::new(Path::new("./tests/sketches/print/print.ino"), sketch_config).unwrap();
 
     println!("{:#?}", board_config);
     println!("{:#?}", sketch);

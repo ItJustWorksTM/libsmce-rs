@@ -26,7 +26,7 @@ jobs:
       - name: Install libSMCE
         run: |
           echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
-          wget --output-document libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
+          wget --output-document libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-GNU.sh
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
       - uses: actions/checkout@v2
@@ -35,6 +35,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
+      - uses: Swatinem/rust-cache@v1
       - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
