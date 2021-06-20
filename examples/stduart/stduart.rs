@@ -16,7 +16,6 @@
  *
  */
 
-use std::error::Error;
 use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::result::Result::Ok;
@@ -78,6 +77,8 @@ fn main() -> anyhow::Result<()> {
         if read > 0 {
             print!("{}", log_str);
             log_str.clear();
+        } else if log.disconnected() {
+            break;
         }
     }
 
@@ -88,7 +89,7 @@ fn main() -> anyhow::Result<()> {
     println!("Done");
 
     let mut board = Board::new();
-    let mut handle = board.start(
+    let handle = board.start(
         &BoardConfig {
             uart_channels: vec![UartChannel {
                 tx_buffer_length: 512,

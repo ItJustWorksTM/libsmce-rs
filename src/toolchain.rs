@@ -98,6 +98,12 @@ pub struct BuildLogReader {
     internal: Arc<ToolchainInternal>,
 }
 
+impl BuildLogReader {
+    pub fn disconnected(&self) -> bool {
+        self.internal.finished.load(Ordering::SeqCst)
+    }
+}
+
 impl Read for BuildLogReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let read = unsafe {
@@ -105,17 +111,8 @@ impl Read for BuildLogReader {
                 .pin_mut()
                 .read_build_log(buf)
         };
-        // println!("read {}", read);
 
-        // Only bail if we have no bytes to read and the compile has finished
-        if read == 0 && self.internal.finished.load(Ordering::SeqCst) {
-            Err(io::Error::new(
-                ErrorKind::ConnectionAborted,
-                "Compile finished",
-            ))
-        } else {
-            Ok(read)
-        }
+        Ok(read)
     }
 }
 

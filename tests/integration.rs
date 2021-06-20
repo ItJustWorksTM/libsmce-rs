@@ -62,7 +62,7 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     println!("{}", {
         let mut log_buf = String::new();
-        log.read_to_string(&mut log_buf);
+        log.read_to_string(&mut log_buf)?;
         log_buf
     });
 
@@ -70,10 +70,15 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     assert!(sketch.compiled());
 
-    let mut board = Board::new();
-    let mut handle = board.start(&board_config, &sketch)?;
+    println!("Compile complete");
 
-    let mut view = handle.view();
+    let mut board = Board::new();
+    let handle = board.start(&board_config, &sketch)?;
+    println!("Sketch started");
+
+    let view = handle.view();
+
+    println!("Pin test");
 
     view.pins
         .get(0)
@@ -88,10 +93,12 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     std::thread::sleep(Duration::from_secs(1));
 
+    println!("Uart test");
+
     let mut uart = &view.uart_channels[0];
 
     let mut uart_out = String::new();
-    uart.read_to_string(&mut uart_out);
+    uart.read_to_string(&mut uart_out)?;
 
     println!("UART:\n{}", uart_out);
 
