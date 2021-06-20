@@ -17,10 +17,12 @@
  */
 
 use std::cell::UnsafeCell;
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
 use cxx::UniquePtr;
+use thiserror::Error;
 
 use crate::board_config::BoardConfig;
 use crate::board_view::{
@@ -28,7 +30,6 @@ use crate::board_view::{
 };
 use crate::ffi::{board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView};
 use crate::sketch::Sketch;
-use std::error::Error;
 
 unsafe impl Send for OpaqueBoard {}
 
@@ -203,16 +204,10 @@ impl BoardHandle<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Error, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum BoardError {
+    #[error("Passed sketch is not compiled")]
     SketchNotCompiled,
+    #[error("Board is already running a sketch")]
     AlreadyRunning,
 }
-
-impl Display for BoardError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Error for BoardError {}

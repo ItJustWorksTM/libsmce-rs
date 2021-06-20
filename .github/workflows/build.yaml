@@ -1,0 +1,34 @@
+name: Build & Test
+
+on: [push, pull_request]
+
+env:
+  LIBSMCE_BASE_URL: https://github.com/ItJustWorksTM/libSMCE/releases/download/1.2.4
+  LIBSMCE_VERSION: 1.2.4
+
+jobs:
+  Linux:
+    name: Linux Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install libSMCE
+        run: |
+          echo hello
+          wget -o libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
+          chmod +x libsmce.sh
+          ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
