@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Install libSMCE
         run: |
-          echo hello
+          echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
           wget -o libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
           chmod +x libsmce.sh
           ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
