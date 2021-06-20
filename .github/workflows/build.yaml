@@ -3,32 +3,45 @@ name: Build & Test
 on: [push, pull_request]
 
 env:
-  LIBSMCE_BASE_URL: https://github.com/ItJustWorksTM/libSMCE/releases/download/1.2.4
+  LIBSMCE_BASE_URL: https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4
   LIBSMCE_VERSION: 1.2.4
 
 jobs:
   Linux:
     name: Linux Test
     runs-on: ubuntu-latest
+    env:
+      CC: gcc-10
+      CXX: g++-10
     steps:
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt upgrade
+          sudo apt install ninja-build
+          ninja --version # technically not a dependency, but used to speedup builds
+          cmake --version
+          brew install arduino-cli
+          arduino-cli version
       - name: Install libSMCE
         run: |
           echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
-          wget -o libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
+          wget --output-document libsmce.sh $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
           chmod +x libsmce.sh
-          ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
+          sudo ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
           components: clippy
-      - name: Run cargo check
+      - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: build
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: -- --nocapture
 
