@@ -37,6 +37,13 @@ fn main() {
         .output()
         .unwrap();
 
+    if !configure_output.status.success() {
+        println!("stdout: {}", from_utf8(&configure_output.stdout).unwrap());
+        println!("stderr: {}", from_utf8(&configure_output.stderr).unwrap());
+
+        assert!(false)
+    }
+
     let stdout = from_utf8(&configure_output.stderr).unwrap();
 
     let mut include_dirs = vec!["src/ffi"];
@@ -48,6 +55,8 @@ fn main() {
             include_dirs.push(path);
         }
     }
+
+    assert!(!cargo_directives.is_empty());
 
     let source_files = vec![
         "src/ffi/sketch.cxx",
@@ -63,6 +72,7 @@ fn main() {
         .includes(&include_dirs)
         .files(&source_files)
         .flag_if_supported("-std=c++20")
+        .flag_if_supported("/std:c++20")
         .compile("smce-rs");
 
     for directive in cargo_directives {
