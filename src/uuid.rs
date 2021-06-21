@@ -28,10 +28,3 @@ impl Uuid {
         unsafe { uuid_to_hex(self) }
     }
 }
-
-#[test]
-fn test() {
-    let uuid = Uuid::generate();
-
-    println!("{:x?}", uuid.bytes);
-}

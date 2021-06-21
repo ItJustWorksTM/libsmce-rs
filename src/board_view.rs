@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::io;
 use std::io::{Read, Write};
 use std::ops::Index;
+use std::pin::Pin;
 use std::slice::Iter as VecIter;
 
 use cxx::UniquePtr;
@@ -29,19 +30,7 @@ use cxx::UniquePtr;
 use crate::board_config::{
     FrameBuffer as FrameBufferInfo, GpioDriver as GpioDriverInfo, UartChannel as UartChannelInfo,
 };
-use crate::ffi::OpaqueBoardView;
-use crate::ffi::OpaqueFramebuffer;
-use crate::ffi::OpaqueVirtualPin;
-use crate::ffi::OpaqueVirtualUart;
-
-// TODO: put this in definitions.rs
-
-unsafe impl Send for OpaqueBoardView {}
-unsafe impl Send for OpaqueFramebuffer {}
-unsafe impl Send for OpaqueVirtualPin {}
-unsafe impl Send for OpaqueVirtualUart {}
-
-// BoardView
+use crate::ffi::{OpaqueFramebuffer, OpaqueVirtualPin, OpaqueVirtualUart};
 
 pub struct BoardView {
     pub pins: Pins,
@@ -49,9 +38,6 @@ pub struct BoardView {
     pub frame_buffers: FrameBuffers,
 }
 
-// DigitalPins
-
-// AnalogPins
 pub struct Pins {
     pub(crate) inner: HashMap<usize, GpioPin>,
 }
@@ -96,8 +82,6 @@ impl<'a> Iterator for AnalogPinIterator<'a> {
     }
 }
 
-// UartChannels
-
 pub struct UartChannels {
     pub(crate) inner: Vec<UartChannel>,
 }
@@ -138,15 +122,15 @@ impl<'a> Iterator for UartChannelIterator<'a> {
     }
 }
 
-// Framebuffers
-
 pub struct FrameBuffers {
     pub(crate) inner: HashMap<usize, FrameBuffer>,
 }
 
 impl FrameBuffers {
     pub fn iter(&self) -> FrameBuffersIterator {
-        todo!()
+        FrameBuffersIterator {
+            inner_iter: self.inner.iter(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -170,7 +154,17 @@ impl Index<usize> for FrameBuffers {
     }
 }
 
-pub struct FrameBuffersIterator {}
+pub struct FrameBuffersIterator<'a> {
+    inner_iter: MapIter<'a, usize, FrameBuffer>,
+}
+
+impl<'a> Iterator for FrameBuffersIterator<'a> {
+    type Item = (&'a usize, &'a FrameBuffer);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner_iter.next()
+    }
+}
 
 pub struct GpioPin {
     pub(crate) inner: UnsafeCell<UniquePtr<OpaqueVirtualPin>>,
@@ -239,46 +233,60 @@ impl Write for &UartChannel {
     }
 }
 
+#[derive(Debug)]
+pub enum FrameBufferFormat {
+    Rgb888,
+    Rgb444,
+}
+
+impl Default for FrameBufferFormat {
+    fn default() -> Self {
+        Self::Rgb888
+    }
+}
+
 pub struct FrameBuffer {
     pub(crate) inner: UnsafeCell<UniquePtr<OpaqueFramebuffer>>,
     pub(crate) info: FrameBufferInfo,
 }
 
 impl FrameBuffer {
+    fn inner(&self) -> Pin<&mut OpaqueFramebuffer> {
+        unsafe { (*self.inner.get()).pin_mut() }
+    }
+
     pub fn info(&self) -> &FrameBufferInfo {
         &self.info
     }
 
     pub fn needs_horizontal_flip(&self) -> bool {
-        todo!()
+        unsafe { self.inner().needs_horizontal_flip() }
     }
 
     pub fn needs_vertical_flip(&self) -> bool {
-        todo!()
+        unsafe { self.inner().needs_vertical_flip() }
     }
 
     pub fn width(&self) -> u16 {
-        todo!()
+        unsafe { self.inner().width() }
     }
 
     pub fn height(&self) -> u16 {
-        todo!()
+        unsafe { self.inner().height() }
     }
 
     pub fn freq(&self) -> u8 {
-        todo!()
-    }
-}
-
-// TODO: Framebuffer is not real io so to say, consider not implementing the Write trait
-// TODO: consider different Writer objects that do different encodings
-impl Write for FrameBuffer {
-    // Buffer needs to be exact sized, e.g. height * width * 4
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        todo!()
+        unsafe { self.inner().freq() }
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+    pub fn expected_buf_size(&self) -> usize {
+        (self.width() * self.height() * 3) as usize
+    }
+
+    pub fn write(&self, buf: &[u8], format: FrameBufferFormat) -> bool {
+        match format {
+            FrameBufferFormat::Rgb888 => unsafe { self.inner().write_rgb888(buf) },
+            FrameBufferFormat::Rgb444 => unsafe { self.inner().write_rgb444(buf) },
+        }
     }
 }

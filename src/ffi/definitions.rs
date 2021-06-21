@@ -16,7 +16,7 @@
  *
  */
 
-#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::missing_safety_doc, clippy::needless_lifetimes)]
 
 pub use ffi::*;
 
@@ -32,7 +32,7 @@ pub mod ffi {
         pub(crate) bytes: [u8; 16],
     }
 
-    pub(crate) enum BoardStatus {
+    pub(crate) enum OpaqueBoardStatus {
         Clean,
         Configured,
         Running,
@@ -182,7 +182,7 @@ pub mod ffi {
         pub(crate) type OpaqueBoard;
         pub(crate) unsafe fn board_new() -> UniquePtr<OpaqueBoard>;
         pub(crate) unsafe fn tick(self: Pin<&mut OpaqueBoard>) -> ExitInfo;
-        pub(crate) unsafe fn status(self: &OpaqueBoard) -> BoardStatus;
+        pub(crate) unsafe fn status(self: &OpaqueBoard) -> OpaqueBoardStatus;
         pub(crate) unsafe fn start(self: Pin<&mut OpaqueBoard>) -> bool;
         pub(crate) unsafe fn resume(self: Pin<&mut OpaqueBoard>) -> bool;
         pub(crate) unsafe fn suspend(self: Pin<&mut OpaqueBoard>) -> bool;
@@ -245,3 +245,16 @@ pub mod ffi {
 
     }
 }
+
+unsafe impl Send for OpaqueBoard {}
+
+unsafe impl Send for OpaqueToolchain {}
+// Warning: only `read_build_log` is thread safe
+unsafe impl Sync for OpaqueToolchain {}
+
+unsafe impl Send for OpaqueBoardView {}
+unsafe impl Send for OpaqueFramebuffer {}
+unsafe impl Send for OpaqueVirtualPin {}
+unsafe impl Send for OpaqueVirtualUart {}
+
+unsafe impl Send for OpaqueSketch {}

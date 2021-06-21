@@ -17,7 +17,7 @@
  */
 
 #include <algorithm>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 #include "sketch_config.hxx"
 
 auto conf(const auto& vec) {

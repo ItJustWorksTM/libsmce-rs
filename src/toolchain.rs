@@ -17,13 +17,12 @@
  */
 
 use std::cell::UnsafeCell;
-use std::convert::TryFrom;
-use std::fmt::{Debug, Formatter};
-use std::io::{ErrorKind, Read};
+use std::fmt::Debug;
+use std::io;
+use std::io::Read;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::{fmt, io};
 
 use cxx::UniquePtr;
 use thiserror::Error;
@@ -31,11 +30,6 @@ use thiserror::Error;
 use crate::ffi::{toolchain_new, OpaqueToolchain, OpaqueToolchainResult};
 use crate::sketch::Sketch;
 use std::marker::PhantomData;
-
-unsafe impl Send for OpaqueToolchain {}
-
-// This is slightly dangerous, but is safe if the log reader only uses `read_build_log` as that is explicitly thread safe.
-unsafe impl Sync for ToolchainInternal {}
 
 #[derive(Clone, Copy, Error, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
@@ -48,9 +42,9 @@ pub enum ToolchainError {
     ResdirEmpty,
     #[error("CMake not found in PATH")]
     CmakeNotFound,
-    #[error("??")]
+    #[error("CMake unknown output")]
     CmakeUnknownOutput,
-    #[error("??")]
+    #[error("CMake returned non 0 exit code")]
     CmakeFailing,
     #[error("Sketch path is invalid")]
     SketchInvalid,
@@ -59,7 +53,7 @@ pub enum ToolchainError {
     #[error("CMake build failed")]
     BuildFailed,
     #[error("Generic failure")]
-    Generic = 255,
+    Generic,
 }
 
 impl Into<Result<(), ToolchainError>> for OpaqueToolchainResult {
@@ -84,6 +78,8 @@ struct ToolchainInternal {
     internal: UnsafeCell<UniquePtr<OpaqueToolchain>>,
     finished: AtomicBool,
 }
+
+unsafe impl Sync for ToolchainInternal {}
 
 pub struct Toolchain {
     internal: Arc<ToolchainInternal>,
@@ -130,9 +126,7 @@ impl Toolchain {
                 internal: internal.clone(),
                 _unsync: PhantomData,
             },
-            BuildLogReader {
-                internal: internal.clone(),
-            },
+            BuildLogReader { internal },
         )
     }
 

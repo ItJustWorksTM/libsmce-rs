@@ -21,7 +21,7 @@
 #include <iostream>
 #include <memory>
 #include <string_view>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 
 auto uuid_generate() -> Uuid {
     const auto generated = smce::Uuid::generate();

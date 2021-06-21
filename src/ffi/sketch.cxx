@@ -20,7 +20,7 @@
 #include <memory>
 #include <string_view>
 #include <SMCE/SMCE_fs.hpp>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 #include "sketch.hxx"
 
 using smce::Sketch;

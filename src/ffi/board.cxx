@@ -17,7 +17,7 @@
  */
 
 #include <functional>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 #include "board.hxx"
 #include "board_config.hxx"
 #include "sketch.hxx"
@@ -43,7 +43,7 @@ auto OpaqueBoard::tick() -> ExitInfo {
     return {exited, exited};
 }
 
-auto OpaqueBoard::status() const -> BoardStatus { return static_cast<BoardStatus>(internal.status()); }
+auto OpaqueBoard::status() const -> OpaqueBoardStatus { return static_cast<OpaqueBoardStatus>(internal.status()); }
 
 auto OpaqueBoard::start() -> bool {
     exited = false;

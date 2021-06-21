@@ -17,7 +17,7 @@
  */
 
 #include <SMCE/SMCE_fs.hpp>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 #include "toolchain.hxx"
 
 #include <iostream>

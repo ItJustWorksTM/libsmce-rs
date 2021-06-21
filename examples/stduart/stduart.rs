@@ -23,14 +23,14 @@ use std::sync::mpsc::{channel, TryRecvError};
 use std::time::Duration;
 use std::{env, io, thread};
 
-use libsmce_rs::board::Board;
-use libsmce_rs::board_config::{BoardConfig, SecureDigitalStorage, UartChannel};
-use libsmce_rs::sketch::Sketch;
-use libsmce_rs::sketch_config::Library::RemoteArduinoLibrary;
-use libsmce_rs::sketch_config::SketchConfig;
+use smce_rs::board::Board;
+use smce_rs::board_config::{BoardConfig, SecureDigitalStorage, UartChannel};
+use smce_rs::sketch::Sketch;
+use smce_rs::sketch_config::Library::RemoteArduinoLibrary;
+use smce_rs::sketch_config::SketchConfig;
 
 use anyhow::anyhow;
-use libsmce_rs::toolchain::Toolchain;
+use smce_rs::toolchain::Toolchain;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();

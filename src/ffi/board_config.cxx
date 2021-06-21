@@ -18,7 +18,7 @@
 
 #include <optional>
 #include <vector>
-#include "libsmce-rs/src/ffi/definitions.rs"
+#include "smce-rs/src/ffi/definitions.rs"
 #include "board_config.hxx"
 
 #include <iostream>

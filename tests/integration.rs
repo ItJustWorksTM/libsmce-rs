@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 
-use libsmce_rs::board::Board;
-use libsmce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver, UartChannel};
-use libsmce_rs::sketch::Sketch;
-use libsmce_rs::sketch_config::{Library, SketchConfig};
-use libsmce_rs::toolchain::Toolchain;
+use smce_rs::board::Board;
+use smce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver, UartChannel};
+use smce_rs::sketch::Sketch;
+use smce_rs::sketch_config::{Library, SketchConfig};
+use smce_rs::toolchain::Toolchain;
 use std::collections::HashMap;
 
 #[test]

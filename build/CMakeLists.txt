@@ -17,7 +17,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(libsmce-rs)
+project(smce-rs)
 
 find_package(Threads REQUIRED)
 find_package(SMCE REQUIRED)

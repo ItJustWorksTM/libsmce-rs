@@ -16,16 +16,17 @@
  *
  */
 
+use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::from_utf8;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
     let mut cmake_out = out_dir.clone();
-    cmake_out.push("libsmce-rs/cmake");
+    cmake_out.push("smce-rs/cmake");
 
     fs::create_dir_all(&out_dir).unwrap();
 
@@ -34,6 +35,7 @@ fn main() {
     let configure_output = Command::new("cmake")
         .args(&["-B", cmake_out_str])
         .envs(std::env::vars())
+        .current_dir("build")
         .output()
         .unwrap();
 
@@ -41,7 +43,7 @@ fn main() {
         println!("stdout: {}", from_utf8(&configure_output.stdout).unwrap());
         println!("stderr: {}", from_utf8(&configure_output.stderr).unwrap());
 
-        assert!(false)
+        return Err("Failed to find native libSMCE".into());
     }
 
     let stdout = from_utf8(&configure_output.stderr).unwrap();
@@ -93,4 +95,5 @@ fn main() {
     }
 
     println!("cargo:rerun-if-changed=CMakeLists.txt");
+    Ok(())
 }

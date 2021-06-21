@@ -27,7 +27,7 @@
 #include "sketch.hxx"
 #include <iostream>
 
-enum class BoardStatus : uint8_t;
+enum class OpaqueBoardStatus : uint8_t;
 
 struct ExitInfo;
 
@@ -43,7 +43,7 @@ struct OpaqueBoard {
     auto configure(const std::unique_ptr<OpaqueBoardConfig>& config) -> bool;
     auto attach_sketch(const std::unique_ptr<OpaqueSketch>& sketch) -> bool;
     auto tick() -> ExitInfo;
-    auto status() const -> BoardStatus;
+    auto status() const -> OpaqueBoardStatus;
     auto start() -> bool;
     auto suspend() -> bool;
     auto resume() -> bool;

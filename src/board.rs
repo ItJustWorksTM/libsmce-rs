@@ -17,9 +17,6 @@
  */
 
 use std::cell::UnsafeCell;
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 
 use cxx::UniquePtr;
 use thiserror::Error;
@@ -28,10 +25,8 @@ use crate::board_config::BoardConfig;
 use crate::board_view::{
     BoardView, FrameBuffer, FrameBuffers, GpioPin, Pins, UartChannel, UartChannels,
 };
-use crate::ffi::{board_new, BoardStatus, ExitInfo, OpaqueBoard, OpaqueBoardView};
+use crate::ffi::{board_new, ExitInfo, OpaqueBoard, OpaqueBoardStatus, OpaqueBoardView};
 use crate::sketch::Sketch;
-
-unsafe impl Send for OpaqueBoard {}
 
 pub struct Board {
     internal: Option<(UnsafeCell<UniquePtr<OpaqueBoard>>, BoardView)>,
@@ -148,12 +143,14 @@ impl Default for Board {
     }
 }
 
-pub enum BoardHandleStatus {
+pub struct BoardLogReader {}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Status {
     Running,
     Suspended,
+    Stopped,
 }
-
-pub struct BoardLogReader {}
 
 impl BoardHandle<'_> {
     // unwrap is safe as we only exist when active
@@ -162,8 +159,12 @@ impl BoardHandle<'_> {
         self.board.internal.as_ref().unwrap()
     }
 
-    pub fn status() -> BoardHandleStatus {
-        todo!()
+    pub fn status(&self) -> Status {
+        match unsafe { (*self.internal().0.get()).pin_mut().status() } {
+            OpaqueBoardStatus::Running => Status::Running,
+            OpaqueBoardStatus::Suspended => Status::Suspended,
+            _ => Status::Stopped,
+        }
     }
 
     pub fn suspend(&self) -> bool {

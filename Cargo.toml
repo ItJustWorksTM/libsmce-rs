@@ -1,5 +1,5 @@
 [package]
-name = "libsmce-rs"
+name = "smce-rs"
 version = "0.1.0"
 authors = ["Ruthger Dijt <ruthgerdijt@gmail.com>"]
 edition = "2018"
@@ -7,6 +7,7 @@ links = "smce"
 repository = "https://github.com/ItJustWorksTM/libsmce-rs"
 description = "Bindings libSMCE."
 categories = ["external-ffi-bindings"]
+build = "build/build.rs"
 
 [dependencies]
 cxx = { version = "1.0", features = ["c++20"] }
@@ -16,7 +17,7 @@ thiserror = "1.0"
 anyhow = "1.0"
 
 [build-dependencies]
-cxx-build = "1.0"
+cxx-build = { version = "1.0", features = ["parallel"] }
 
 [[example]]
 name = "std_uart"
