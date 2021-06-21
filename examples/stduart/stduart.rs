@@ -143,7 +143,7 @@ fn main() -> anyhow::Result<()> {
 
             thread::sleep(Duration::from_millis(1));
 
-            if let Err(exit_code) = handle.tick() {
+            if handle.tick().is_err() {
                 break;
             }
 

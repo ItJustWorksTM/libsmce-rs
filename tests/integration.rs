@@ -1,8 +1,5 @@
-use std::cell::RefCell;
-use std::error::Error;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::time::Duration;
 
 use smce_rs::board::Board;
@@ -10,11 +7,10 @@ use smce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver,
 use smce_rs::sketch::Sketch;
 use smce_rs::sketch_config::{Library, SketchConfig};
 use smce_rs::toolchain::Toolchain;
-use std::collections::HashMap;
 
 #[test]
-fn test_compile() -> Result<(), Box<dyn Error>> {
-    let mut smce_resources = PathBuf::from(env!("OUT_DIR"));
+fn test_compile() -> Result<(), anyhow::Error> {
+    let smce_resources = PathBuf::from(env!("OUT_DIR"));
 
     let board_config = BoardConfig {
         gpio_drivers: vec![
@@ -93,12 +89,8 @@ fn test_compile() -> Result<(), Box<dyn Error>> {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    println!("Uart test");
-
-    let mut uart = &view.uart_channels[0];
-
     let mut uart_out = String::new();
-    let read = uart.read_to_string(&mut uart_out)?;
+    let read = (&view.uart_channels[0]).read_to_string(&mut uart_out)?;
 
     println!("UART ({}):\n{}", read, uart_out);
 
