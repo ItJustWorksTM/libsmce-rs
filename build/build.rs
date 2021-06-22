@@ -69,10 +69,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         "src/ffi/board_view.cxx",
         "src/ffi/sketch_config.cxx",
     ];
-
     cxx_build::bridge("src/ffi/definitions.rs")
         .includes(&include_dirs)
         .files(&source_files)
+        .flag_if_supported("-std=c++2a")
+        .flag_if_supported("/std:c++2a")
         .flag_if_supported("-std=c++20")
         .flag_if_supported("/std:c++20")
         .compile("smce-rs");

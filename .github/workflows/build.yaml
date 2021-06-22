@@ -15,14 +15,44 @@ jobs:
           sudo apt update
           sudo apt upgrade
           sudo apt install ninja-build
-          ninja --version # technically not a dependency, but used to speedup builds
-          cmake --version
           brew install arduino-cli
-          arduino-cli version
-          echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
           wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Linux-x86_64-GNU.sh
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+      - uses: Swatinem/rust-cache@v1
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -- --nocapture
+
+  MacOS:
+    name: MacOS Build & Test
+    runs-on: macos-latest
+    env:
+      CC: clang
+      CXX: clang++
+      CXXFLAGS: -std=c++2a
+
+    steps:
+      - name: Deps
+        run: |
+          brew install ninja arduino-cli
+          echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
+          wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Darwin-x86_64-AppleClang.sh
+          chmod +x libsmce.sh
+          sudo ./libsmce.sh --prefix=/usr/local --skip-license --exclude-subdir
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
@@ -52,8 +82,6 @@ jobs:
 #      - name: Deps
 #        run: |
 #          choco install wget ninja arduino-cli openssl > silence
-#          ninja --version
-#          arduino-cli version
 #          wget -O libsmce.zip https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Windows-AMD64-MSVC-Release.zip
 #          7z x libsmce.zip -oC:\
 #          ren C:\libSMCE-1.2.4-Windows-AMD64-MSVC-Release C:\smce

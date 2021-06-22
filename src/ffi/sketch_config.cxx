@@ -20,7 +20,8 @@
 #include "smce-rs/src/ffi/definitions.rs"
 #include "sketch_config.hxx"
 
-auto conf(const auto& vec) {
+template<class T>
+auto conf(const T& vec) {
     auto ret = std::vector<std::string>{};
     std::transform(vec.begin(), vec.end(), std::back_inserter(ret),
                    [](const auto& str) { return std::string{str}; });
