@@ -209,7 +209,7 @@ fn remote_preproc_lib() -> anyhow::Result<()> {
         SketchConfig {
             preproc_libs: vec![Library::RemoteArduinoLibrary {
                 name: "MQTT".into(),
-                version: "2.5.0".into(),
+                version: "".into(),
             }],
             ..Default::default()
         },
@@ -225,11 +225,11 @@ fn wifi_intended_use() -> anyhow::Result<()> {
             preproc_libs: vec![
                 Library::RemoteArduinoLibrary {
                     name: "MQTT".into(),
-                    version: "2.5.0".into(),
+                    version: "".into(),
                 },
                 Library::RemoteArduinoLibrary {
                     name: "WiFi".into(),
-                    version: "1.2.7".into(),
+                    version: "".into(),
                 },
             ],
             ..Default::default()
