@@ -16,7 +16,6 @@
  *
  */
 
-use std::cell::UnsafeCell;
 use std::collections::hash_map::Iter as MapIter;
 use std::collections::HashMap;
 use std::io;
@@ -24,6 +23,7 @@ use std::io::{Read, Write};
 use std::ops::Index;
 use std::pin::Pin;
 use std::slice::Iter as VecIter;
+use std::{cell::UnsafeCell, fmt};
 
 use cxx::UniquePtr;
 
@@ -190,6 +190,12 @@ impl GpioPin {
 
     pub fn digital_write(&self, val: bool) {
         unsafe { (*self.inner.get()).pin_mut().digital_write(val) }
+    }
+}
+
+impl fmt::Debug for GpioPin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.info())
     }
 }
 

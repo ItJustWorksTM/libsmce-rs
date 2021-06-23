@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         ));
     }
 
-    let home = PathBuf::from(env!("OUT_DIR"));
+    let home = PathBuf::from(env!("SMCE_TEST_HOME"));
 
     let mut sketch = Sketch::new(
         &PathBuf::from(args[2].clone()),
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
     )
     .expect("Failed to create Sketch");
 
-    let (tc, mut log) = Toolchain::new(&home);
+    let (tc, mut log) = Toolchain::new(&home)?;
 
     let compile_handle = thread::spawn(move || {
         println!("Compiling...");

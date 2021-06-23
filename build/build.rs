@@ -30,10 +30,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     fs::create_dir_all(&out_dir).unwrap();
 
-    let cmake_out_str = cmake_out.to_str().unwrap();
-
     let configure_output = Command::new("cmake")
-        .args(&["-B", cmake_out_str])
+        .args(&["-B", cmake_out.to_str().unwrap()])
         .envs(std::env::vars())
         .current_dir("build")
         .output()
@@ -82,12 +80,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", directive);
     }
 
-    let mut resources_dir = cmake_out.clone();
-    resources_dir.push("RtResources");
+    let resources_dir = out_dir;
+
+    println!("cargo:rustc-env=SMCE_TEST_HOME={}", resources_dir.display());
+    println!("cargo:test_home={}", resources_dir.display());
 
     println!(
-        "cargo:warning:resources={}",
-        resources_dir.to_str().unwrap()
+        "cargo:rtresources={}",
+        resources_dir.join("RtResources").display()
+    );
+
+    println!(
+        "cargo:rtresources_ark={}",
+        resources_dir.join("SMCE_Resources.zip").display()
     );
 
     for path in fs::read_dir(&Path::new("src/ffi")).unwrap() {
@@ -96,5 +101,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     println!("cargo:rerun-if-changed=CMakeLists.txt");
+
     Ok(())
 }

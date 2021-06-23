@@ -74,7 +74,7 @@ fn as_simple(libs: &[Library]) -> LibraryV {
     ret
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SketchConfig {
     pub fqbn: String,
     pub extra_board_uris: Vec<String>,
@@ -82,6 +82,19 @@ pub struct SketchConfig {
     pub complink_libs: Vec<Library>,
     pub extra_compile_defs: Vec<String>,
     pub extra_compile_opts: Vec<String>,
+}
+
+impl Default for SketchConfig {
+    fn default() -> Self {
+        Self {
+            fqbn: "arduino:avr:nano".to_string(),
+            extra_board_uris: Default::default(),
+            preproc_libs: Default::default(),
+            complink_libs: Default::default(),
+            extra_compile_defs: Default::default(),
+            extra_compile_opts: Default::default(),
+        }
+    }
 }
 
 impl SketchConfig {

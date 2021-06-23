@@ -1,100 +1,341 @@
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::{
+    fs::{self, File},
+    io::Write,
+    io::{BufReader, Read},
+    path::PathBuf,
+    thread,
+    time::Duration,
+};
 
-use smce_rs::board::Board;
-use smce_rs::board_config::{BoardConfig, DigitalDriver, FrameBuffer, GpioDriver, UartChannel};
-use smce_rs::sketch::Sketch;
-use smce_rs::sketch_config::{Library, SketchConfig};
-use smce_rs::toolchain::Toolchain;
+use smce_rs::{
+    board::{Board, Status},
+    board_config::SecureDigitalStorage,
+    board_config::{AnalogDriver, BoardConfig, DigitalDriver, GpioDriver, UartChannel},
+    board_view::GpioPin,
+    sketch::Sketch,
+    sketch_config::{Library, SketchConfig},
+    toolchain::BuildLogReader,
+    toolchain::Toolchain,
+};
+
+const TEST_HOME: &str = env!("SMCE_TEST_HOME");
+
+fn build_sketch(
+    path: &str,
+    sketch_config: SketchConfig,
+) -> anyhow::Result<(Sketch, BuildLogReader)> {
+    let (tc, mut tclog) = Toolchain::new(TEST_HOME)?;
+    let mut sketch = Sketch::new(path, sketch_config).unwrap();
+    if let Err(err) = tc.compile(&mut sketch) {
+        let mut log = String::new();
+        let _ = tclog.read_to_string(&mut log)?;
+        return Err(anyhow::anyhow!("Compile err: {} with log:\n{}", err, log));
+    }
+    Ok((sketch, tclog))
+}
 
 #[test]
-fn test_compile() -> Result<(), anyhow::Error> {
-    let smce_resources = PathBuf::from(env!("OUT_DIR"));
+fn suitable_env() {
+    assert!(Toolchain::new(TEST_HOME).is_ok());
+    assert!(Toolchain::new("_non_existent_").is_err());
+}
 
-    let board_config = BoardConfig {
-        gpio_drivers: vec![
-            GpioDriver {
-                pin_id: 0,
-                digital_driver: DigitalDriver::default().into(),
-                analog_driver: None,
-            },
-            GpioDriver {
-                pin_id: 1,
-                digital_driver: DigitalDriver::default().into(),
-                analog_driver: None,
-            },
-        ],
-        uart_channels: vec![UartChannel::default()],
-        frame_buffers: vec![FrameBuffer::default()],
-        ..Default::default()
-    };
-
-    let sketch_config = SketchConfig {
-        fqbn: "arduino:avr:nano".into(),
-        preproc_libs: vec![
-            Library::RemoteArduinoLibrary {
-                name: "MQTT".into(),
-                version: "2.5.0".into(),
-            },
-            Library::RemoteArduinoLibrary {
-                name: "WiFi".into(),
-                version: "1.2.7".into(),
-            },
-        ],
-        ..Default::default()
-    };
-
-    let mut sketch =
-        Sketch::new(Path::new("./tests/sketches/print/print.ino"), sketch_config).unwrap();
-
-    println!("{:#?}", board_config);
-    println!("{:#?}", sketch);
-
-    assert!(sketch.source().exists());
-
-    let (tc, mut log) = Toolchain::new(&smce_resources);
-    let compile_res = tc.compile(&mut sketch);
-
-    println!("{}", {
-        let mut log_buf = String::new();
-        log.read_to_string(&mut log_buf)?;
-        log_buf
-    });
-
-    assert!(compile_res.is_ok());
-
+#[test]
+fn noop_compile() -> anyhow::Result<()> {
+    let sketch = build_sketch("./tests/sketches/noop", Default::default())?.0;
     assert!(sketch.compiled());
+    Ok(())
+}
 
-    println!("Compile complete");
+#[test]
+fn tick_crash() -> anyhow::Result<()> {
+    let sketch = build_sketch("./tests/sketches/uncaught", Default::default())?.0;
 
     let mut board = Board::new();
-    let handle = board.start(&board_config, &sketch)?;
-    println!("Sketch started");
+    let handle = board.start(&Default::default(), &sketch)?;
 
-    let view = handle.view();
+    for _ in 0..10 {
+        if handle.tick().is_err() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
 
-    println!("Pin test");
+    assert_eq!(handle.status(), Status::Stopped);
+    assert_ne!(handle.stop(), 0, "Expected non zero exitcode");
+    Ok(())
+}
 
-    view.pins
-        .get(0)
-        .expect("pin 0 doesn't exist :(")
-        .digital_write(true);
+#[test]
+fn suspend_resume() -> anyhow::Result<()> {
+    let sketch = build_sketch("./tests/sketches/noop", Default::default())?.0;
 
-    assert!(view.pins[0].digital_read());
-    view.pins[0].digital_write(false);
-    assert!(!view.pins[0].digital_read());
+    let mut board = Board::new();
+    let handle = board.start(&Default::default(), &sketch)?;
 
-    view.pins.get(1).expect("pin 1 doesnt exist :(");
+    assert_eq!(handle.status(), Status::Running);
+    assert!(handle.suspend());
+    assert_eq!(handle.status(), Status::Suspended);
+    assert!(handle.resume());
+    assert_eq!(handle.status(), Status::Running);
+    assert!(!handle.resume());
 
-    std::thread::sleep(Duration::from_secs(1));
+    Ok(())
+}
 
-    let mut uart_out = String::new();
-    let read = (&view.uart_channels[0]).read_to_string(&mut uart_out)?;
+fn test_digital_pin_delayable(pin: &GpioPin, expected_value: bool) -> bool {
+    for _ in 0..16384 {
+        if pin.digital_read() == expected_value {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    false
+}
 
-    println!("UART ({}):\n{}", read, uart_out);
+fn test_analog_pin_delayable(pin: &GpioPin, expected_value: u16) -> bool {
+    for _ in 0..16384 {
+        if pin.analog_read() == expected_value {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    false
+}
 
-    assert_eq!(handle.stop(), 0);
+#[test]
+fn boardview_gpio() -> anyhow::Result<()> {
+    let sketch = build_sketch("./tests/sketches/pins", Default::default())?.0;
+
+    let mut board = Board::new();
+    let handle = board.start(
+        &BoardConfig {
+            gpio_drivers: vec![
+                GpioDriver {
+                    pin_id: 0,
+                    digital_driver: Some(DigitalDriver {
+                        read: true,
+                        write: false,
+                    }),
+                    analog_driver: Some(AnalogDriver {
+                        read: true,
+                        write: false,
+                    }),
+                },
+                GpioDriver {
+                    pin_id: 2,
+                    digital_driver: Some(DigitalDriver {
+                        read: false,
+                        write: true,
+                    }),
+                    analog_driver: Some(AnalogDriver {
+                        read: false,
+                        write: true,
+                    }),
+                },
+            ],
+            ..Default::default()
+        },
+        &sketch,
+    )?;
+
+    let bv = handle.view();
+
+    let pin0 = &bv.pins[0];
+    assert!(bv.pins.get(1).is_none());
+    let pin2 = &bv.pins[2];
+
+    thread::sleep(Duration::from_millis(1));
+
+    pin0.digital_write(false);
+
+    let read_log = || {
+        let mut buf = String::new();
+        let _ = handle.log().read_to_string(&mut buf);
+        buf
+    };
+
+    assert!(test_digital_pin_delayable(pin2, true), "{}", read_log());
+    pin0.digital_write(true);
+    assert!(test_digital_pin_delayable(pin2, false), "{}", read_log());
+
+    Ok(())
+}
+
+#[test]
+fn uart() -> anyhow::Result<()> {
+    let sketch = build_sketch("./tests/sketches/uart", Default::default())?.0;
+
+    let mut board = Board::new();
+    let handle = board.start(
+        &BoardConfig {
+            uart_channels: vec![UartChannel::default()],
+            ..Default::default()
+        },
+        &sketch,
+    )?;
+
+    let mut uart0 = &handle.view().uart_channels[0];
+
+    let mut echo_test = |input: &str| {
+        assert_eq!(uart0.write(input.as_bytes()).unwrap(), input.len());
+
+        let mut buf = String::with_capacity(input.len());
+        for _ in 0..16000 {
+            if uart0.read_to_string(&mut buf).unwrap() > 0 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(buf, input);
+    };
+
+    echo_test("HELLO UART");
+    echo_test("RUST IS COOL!");
+
+    Ok(())
+}
+
+#[test]
+fn mixed_sources() -> anyhow::Result<()> {
+    let _ = build_sketch("./tests/sketches/with_cxx", Default::default())?;
+    Ok(())
+}
+
+#[test]
+fn remote_preproc_lib() -> anyhow::Result<()> {
+    let _ = build_sketch(
+        "./tests/sketches/remote_pp",
+        SketchConfig {
+            preproc_libs: vec![Library::RemoteArduinoLibrary {
+                name: "MQTT".into(),
+                version: "2.5.0".into(),
+            }],
+            ..Default::default()
+        },
+    )?;
+    Ok(())
+}
+
+#[test]
+fn wifi_intended_use() -> anyhow::Result<()> {
+    let _ = build_sketch(
+        "./tests/sketches/wifi",
+        SketchConfig {
+            preproc_libs: vec![
+                Library::RemoteArduinoLibrary {
+                    name: "MQTT".into(),
+                    version: "2.5.0".into(),
+                },
+                Library::RemoteArduinoLibrary {
+                    name: "WiFi".into(),
+                    version: "1.2.7".into(),
+                },
+            ],
+            ..Default::default()
+        },
+    )?;
+    Ok(())
+}
+
+#[test]
+fn patched_lib() -> anyhow::Result<()> {
+    let sketch = build_sketch(
+        "./tests/sketches/patch",
+        SketchConfig {
+            complink_libs: vec![Library::LocalArduinoLibrary {
+                root_dir: "./patches/ESP32_analogRewrite".into(),
+                patch_for: "ESP32 AnalogWrite".into(),
+            }],
+            ..Default::default()
+        },
+    )?
+    .0;
+
+    let mut board = Board::new();
+    let handle = board.start(
+        &BoardConfig {
+            gpio_drivers: vec![GpioDriver {
+                pin_id: 0,
+                analog_driver: Some(AnalogDriver {
+                    read: false,
+                    write: true,
+                }),
+                digital_driver: None,
+            }],
+            ..Default::default()
+        },
+        &sketch,
+    )?;
+
+    thread::sleep(Duration::from_millis(1));
+
+    assert!(test_analog_pin_delayable(&handle.view().pins[0], 42));
+
+    Ok(())
+}
+
+#[test]
+fn sdcard() -> anyhow::Result<()> {
+    let sketch = build_sketch(
+        "./tests/sketches/sd_fs",
+        SketchConfig {
+            preproc_libs: vec![Library::RemoteArduinoLibrary {
+                name: "SD".into(),
+                version: "".into(),
+            }],
+            ..Default::default()
+        },
+    )?
+    .0;
+
+    let mut root_dir = {
+        let mut root = PathBuf::from(TEST_HOME);
+        root.push("storage");
+        root
+    };
+
+    if root_dir.exists() {
+        fs::remove_dir_all(&root_dir)?;
+    }
+    fs::create_dir_all(&root_dir)?;
+
+    let mut board = Board::new();
+    let handle = board.start(
+        &BoardConfig {
+            gpio_drivers: vec![GpioDriver {
+                pin_id: 0,
+                analog_driver: None,
+                digital_driver: Some(DigitalDriver {
+                    read: false,
+                    write: true,
+                }),
+            }],
+            sd_cards: vec![SecureDigitalStorage {
+                root_dir: root_dir.clone(),
+                cspin: 0,
+            }],
+            ..Default::default()
+        },
+        &sketch,
+    )?;
+
+    assert!(test_digital_pin_delayable(&handle.view().pins[0], true));
+    handle.stop();
+
+    root_dir.push("foo");
+    assert!(root_dir.is_dir());
+    root_dir.pop();
+    root_dir.push("bar");
+    assert!(root_dir.is_dir());
+    root_dir.push("baz");
+    assert!(root_dir.is_file());
+    let f = File::open(&root_dir)?;
+    let mut reader = BufReader::new(f);
+    let mut content = String::new();
+    reader.read_to_string(&mut content)?;
+
+    assert_eq!(content, "quxx");
 
     Ok(())
 }
