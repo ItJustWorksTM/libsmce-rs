@@ -16,6 +16,8 @@ jobs:
           sudo apt upgrade
           sudo apt install ninja-build
           brew install arduino-cli
+          arduino-cli core install arduino:avr
+          arduino-cli lib install MQTT SD WiFi
           wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Linux-x86_64-GNU.sh
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
@@ -49,7 +51,8 @@ jobs:
       - name: Deps
         run: |
           brew install ninja arduino-cli
-          echo $LIBSMCE_BASE_URL/libSMCE-$LIBSMCE_VERSION-Linux-x86_64-Clang.sh
+          arduino-cli core install arduino:avr
+          arduino-cli lib install MQTT SD WiFi
           wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Darwin-x86_64-AppleClang.sh
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr/local --skip-license --exclude-subdir
@@ -82,6 +85,8 @@ jobs:
 #      - name: Deps
 #        run: |
 #          choco install wget ninja arduino-cli openssl > silence
+#          arduino-cli core install arduino:avr
+#          arduino-cli lib install MQTT SD WiFi
 #          wget -O libsmce.zip https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Windows-AMD64-MSVC-Release.zip
 #          7z x libsmce.zip -oC:\
 #          ren C:\libSMCE-1.2.4-Windows-AMD64-MSVC-Release C:\smce
