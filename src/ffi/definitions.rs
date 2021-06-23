@@ -197,6 +197,7 @@ pub mod ffi {
             conf: &UniquePtr<OpaqueBoardConfig>,
         ) -> bool;
         pub(crate) unsafe fn view(self: Pin<&mut OpaqueBoard>) -> UniquePtr<OpaqueBoardView>;
+        pub(crate) unsafe fn runtime_log(self: Pin<&mut OpaqueBoard>, buf: &mut [u8]) -> usize;
 
         include!("board_view.hxx");
 

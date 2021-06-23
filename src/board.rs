@@ -16,7 +16,7 @@
  *
  */
 
-use std::cell::UnsafeCell;
+use std::{cell::UnsafeCell, io, io::Read};
 
 use cxx::UniquePtr;
 use thiserror::Error;
@@ -143,8 +143,6 @@ impl Default for Board {
     }
 }
 
-pub struct BoardLogReader {}
-
 #[derive(Debug, Copy, Clone)]
 pub enum Status {
     Running,
@@ -179,8 +177,8 @@ impl BoardHandle<'_> {
         &self.internal().1
     }
 
-    pub fn log(&self) -> &BoardLogReader {
-        todo!()
+    pub fn log(&self) -> BoardLogReader {
+        BoardLogReader { handle: self }
     }
 
     // Calls tick() once, if the sketch is still running we explicitly terminate
@@ -215,4 +213,14 @@ pub enum BoardError {
     SketchNotCompiled,
     #[error("Board is already running a sketch")]
     AlreadyRunning,
+}
+
+pub struct BoardLogReader<'a> {
+    handle: &'a BoardHandle<'a>,
+}
+
+impl Read for BoardLogReader<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(unsafe { (*self.handle.internal().0.get()).pin_mut().runtime_log(buf) })
+    }
 }

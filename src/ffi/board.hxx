@@ -47,6 +47,7 @@ struct OpaqueBoard {
     auto terminate() -> bool;
     auto reset() -> bool;
     auto view() -> std::unique_ptr<OpaqueBoardView>;
+    auto runtime_log(rust::Slice<uint8_t> buf) -> size_t;
 };
 
 auto board_new() -> std::unique_ptr<OpaqueBoard>;

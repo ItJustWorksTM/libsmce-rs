@@ -16,6 +16,7 @@
  *
  */
 
+#include <cstring>
 #include <functional>
 #include "smce-rs/src/ffi/definitions.rs"
 #include "board.hxx"
@@ -61,4 +62,13 @@ auto OpaqueBoard::reset() -> bool { return internal.reset(); }
 
 auto OpaqueBoard::view() -> std::unique_ptr<OpaqueBoardView> {
     return std::make_unique<OpaqueBoardView>(OpaqueBoardView{internal.view()});
+}
+
+auto OpaqueBoard::runtime_log(rust::Slice<uint8_t> buf) -> size_t {
+    auto log = internal.runtime_log();
+    const auto len = std::min(buf.size(), log.second.size());
+
+    std::memcpy(buf.data(), log.second.data(), len);
+    log.second.erase(0, len);
+    return len;
 }
