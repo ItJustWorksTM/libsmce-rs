@@ -143,7 +143,7 @@ impl Default for Board {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Status {
     Running,
     Suspended,
