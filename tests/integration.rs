@@ -244,7 +244,7 @@ fn patched_lib() -> anyhow::Result<()> {
         "./tests/sketches/patch",
         SketchConfig {
             complink_libs: vec![Library::LocalArduinoLibrary {
-                root_dir: "./patches/ESP32_analogRewrite".into(),
+                root_dir: fs::canonicalize("./tests/patches/ESP32_analogRewrite")?,
                 patch_for: "ESP32 AnalogWrite".into(),
             }],
             ..Default::default()
