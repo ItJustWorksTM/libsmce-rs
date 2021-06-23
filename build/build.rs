@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("cargo:rerun-if-changed={}", path.path().display());
     }
 
-    println!("cargo:rerun-if-changed=CMakeLists.txt");
+    println!("cargo:rerun-if-changed=build/CMakeLists.txt");
 
     Ok(())
 }
