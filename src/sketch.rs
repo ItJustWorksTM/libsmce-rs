@@ -16,9 +16,9 @@
  *
  */
 
-use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
+use std::{ffi::OsStr, fmt};
 
 use cxx::UniquePtr;
 
@@ -32,8 +32,8 @@ pub struct Sketch {
 
 impl Sketch {
     // Takes path a sketch .ino or a folder containing a .ino file
-    pub fn new(source: &Path, config: SketchConfig) -> Option<Sketch> {
-        source.to_str().map(|source| Sketch {
+    pub fn new<S: AsRef<OsStr> + ?Sized>(source: &S, config: SketchConfig) -> Option<Sketch> {
+        source.as_ref().to_str().map(|source| Sketch {
             internal: unsafe { sketch_new(source, &config.as_opaque().as_ref().unwrap()) },
             config,
         })
@@ -79,7 +79,6 @@ mod test {
         let path = Path::new("/home/ruthgerd/nonexistent.ino");
         let sketch = Sketch::new(&path, SketchConfig::default());
         assert!(sketch.is_some());
-
         let sketch = sketch.unwrap();
         (sketch, path)
     }

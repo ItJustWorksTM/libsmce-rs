@@ -16,13 +16,12 @@
  *
  */
 
-use std::cell::UnsafeCell;
 use std::fmt::Debug;
 use std::io;
 use std::io::Read;
-use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::{cell::UnsafeCell, ffi::OsStr};
 
 use cxx::UniquePtr;
 use thiserror::Error;
@@ -113,41 +112,36 @@ impl Read for BuildLogReader {
 }
 
 impl Toolchain {
-    pub fn new(resource_dir: &Path) -> (Toolchain, BuildLogReader) {
+    pub fn new<S: AsRef<OsStr> + ?Sized>(
+        resource_dir: &S,
+    ) -> Result<(Toolchain, BuildLogReader), ToolchainError> {
         let internal = Arc::new(ToolchainInternal {
             internal: UnsafeCell::new(unsafe {
-                toolchain_new(resource_dir.to_str().unwrap_or(""))
+                let mut tc = toolchain_new(resource_dir.as_ref().to_str().unwrap_or(""));
+                let res: Result<(), ToolchainError> =
+                    tc.pin_mut().check_suitable_environment().into();
+                res?;
+                tc
             }),
             finished: AtomicBool::new(false),
         });
 
-        (
+        Ok((
             Toolchain {
                 internal: internal.clone(),
                 _unsync: PhantomData,
             },
             BuildLogReader { internal },
-        )
-    }
-
-    fn check_suitable_env(&self) -> Result<(), ToolchainError> {
-        unsafe {
-            (*self.internal.internal.get())
-                .pin_mut()
-                .check_suitable_environment()
-        }
-        .into()
+        ))
     }
 
     pub fn compile(self, sketch: &mut Sketch) -> Result<(), ToolchainError> {
-        let ret = self.check_suitable_env().and_then(|_| {
-            unsafe {
-                (*self.internal.internal.get())
-                    .pin_mut()
-                    .compile(&mut sketch.internal)
-            }
-            .into()
-        });
+        let ret = unsafe {
+            (*self.internal.internal.get())
+                .pin_mut()
+                .compile(&mut sketch.internal)
+        }
+        .into();
 
         self.internal.finished.store(true, Ordering::SeqCst);
 
