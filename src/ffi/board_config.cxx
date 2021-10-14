@@ -23,60 +23,44 @@
 
 #include <iostream>
 
-auto board_config_new(rust::Vec<uint16_t> pins, rust::Vec<GpioDriverV> gpio_drivers,
-                      rust::Vec<UartChannelV> uart_channels, rust::Vec<SecureDigitalStorageV> sd_cards,
-                      rust::Vec<FrameBufferV> frame_buffers) -> std::unique_ptr<OpaqueBoardConfig> {
+auto board_config_new(const BoardConfig& config) -> std::unique_ptr<OpaqueBoardConfig> {
     auto ret = smce::BoardConfig{};
-    std::copy(pins.begin(), pins.end(), std::back_inserter(ret.pins));
 
-    std::transform(gpio_drivers.begin(), gpio_drivers.end(), std::back_inserter(ret.gpio_drivers),
-                   [](const auto& gpio) {
-                       auto ret = smce::BoardConfig::GpioDrivers{};
+    std::transform(config.gpio_drivers.begin(), config.gpio_drivers.end(),
+                   std::back_inserter(ret.gpio_drivers), [&](const auto& gpio) {
+                       ret.pins.push_back(gpio.pin_id);
+                       return smce::BoardConfig::GpioDrivers{
+                           .pin_id = gpio.pin_id,
+                           .digital_driver = smce::BoardConfig::GpioDrivers::DigitalDriver{gpio.allow_read,
+                                                                                           gpio.allow_write},
+                           .analog_driver = smce::BoardConfig::GpioDrivers::AnalogDriver{gpio.allow_read,
+                                                                                         gpio.allow_write}};
+                   });
 
-                       ret.pin_id = gpio.pin_id;
+    std::transform(config.uart_channels.begin(), config.uart_channels.end(),
+                   std::back_inserter(ret.uart_channels), [](const auto& uart) {
+                       return smce::BoardConfig::UartChannel{.rx_pin_override = std::nullopt,
+                                                             .tx_pin_override = std::nullopt,
+                                                             .baud_rate = uart.baud_rate,
+                                                             .rx_buffer_length = uart.rx_buffer_length,
+                                                             .tx_buffer_length = uart.tx_buffer_length,
+                                                             .flushing_threshold = uart.flushing_threshold};
+                   });
 
-                       if (gpio.digital_driver) {
-                           ret.digital_driver = {gpio.digital_driver->read, gpio.digital_driver->write};
-                       }
-
-                       if (gpio.analog_driver) {
-                           ret.analog_driver = {gpio.analog_driver->read, gpio.analog_driver->write};
-                       }
-
+    std::transform(config.sd_cards.begin(), config.sd_cards.end(), std::back_inserter(ret.sd_cards),
+                   [](const auto& sd) {
+                       auto ret = smce::BoardConfig::SecureDigitalStorage{};
+                       ret.cspin = sd.cspin;
+                       ret.root_dir = std::string{sd.root_dir};
                        return ret;
                    });
 
-    std::transform(uart_channels.begin(), uart_channels.end(), std::back_inserter(ret.uart_channels),
-                   [](const auto& uart) {
-                       auto ret = smce::BoardConfig::UartChannel{};
-
-                       if (uart.rx_pin_override)
-                           ret.rx_pin_override = *uart.rx_pin_override;
-
-                       if (uart.tx_pin_override)
-                           ret.tx_pin_override = *uart.tx_pin_override;
-
-                       ret.baud_rate = uart.baud_rate;
-                       ret.rx_buffer_length = uart.rx_buffer_length;
-                       ret.tx_buffer_length = uart.tx_buffer_length;
-                       ret.flushing_threshold = uart.flushing_threshold;
-
-                     return ret;
-                   });
-
-    std::transform(sd_cards.begin(), sd_cards.end(), std::back_inserter(ret.sd_cards), [](const auto& sd) {
-        auto ret = smce::BoardConfig::SecureDigitalStorage{};
-        ret.cspin = sd.cspin;
-        ret.root_dir = std::string{sd.root_dir.data(), sd.root_dir.size()};
-        return ret;
-    });
-
-    std::transform(frame_buffers.begin(), frame_buffers.end(), std::back_inserter(ret.frame_buffers),
-                   [](const auto& fb) {
+    std::transform(config.frame_buffers.begin(), config.frame_buffers.end(),
+                   std::back_inserter(ret.frame_buffers), [](const auto& fb) {
                        auto ret = smce::BoardConfig::FrameBuffer{};
                        ret.key = fb.key;
-                       ret.direction = fb.direction ? smce::BoardConfig::FrameBuffer::Direction::in
-                                                    : smce::BoardConfig::FrameBuffer::Direction::out;
+                       ret.direction = fb.allow_write ? smce::BoardConfig::FrameBuffer::Direction::in
+                                                      : smce::BoardConfig::FrameBuffer::Direction::out;
                        return ret;
                    });
 

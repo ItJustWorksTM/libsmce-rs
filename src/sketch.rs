@@ -25,6 +25,7 @@ use cxx::UniquePtr;
 use crate::ffi::{sketch_new, OpaqueSketch, Uuid};
 use crate::sketch_config::SketchConfig;
 
+/// Sketch is very awesome
 pub struct Sketch {
     pub(crate) internal: UniquePtr<OpaqueSketch>,
     pub(crate) config: SketchConfig,
@@ -34,7 +35,7 @@ impl Sketch {
     // Takes path a sketch .ino or a folder containing a .ino file
     pub fn new<S: AsRef<OsStr> + ?Sized>(source: &S, config: SketchConfig) -> Option<Sketch> {
         source.as_ref().to_str().map(|source| Sketch {
-            internal: unsafe { sketch_new(source, &config.as_opaque().as_ref().unwrap()) },
+            internal: unsafe { sketch_new(source, config.as_opaque().as_ref().unwrap()) },
             config,
         })
     }

@@ -23,13 +23,9 @@
 #include <SMCE/SketchConf.hpp>
 #include <rust/cxx.h>
 
-struct LibraryV;
+struct SketchConfig;
 using OpaqueSketchConfig = smce::SketchConfig;
 
-auto sketch_config_new(const rust::Str fqbn, rust::Slice<const rust::String> extra_board_uris,
-                       LibraryV preproc_libs, LibraryV complink_libs,
-                       rust::Slice<const rust::String> extra_compile_defs,
-                       rust::Slice<const rust::String> extra_compile_opts)
-    -> std::unique_ptr<OpaqueSketchConfig>;
+auto sketch_config_new(const SketchConfig& config) -> std::unique_ptr<OpaqueSketchConfig>;
 
 #endif // LIBSMCE_RS_SKETCH_CONFIG_HXX

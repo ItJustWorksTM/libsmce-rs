@@ -25,13 +25,8 @@
 
 using OpaqueBoardConfig = smce::BoardConfig;
 
-struct GpioDriverV;
-struct UartChannelV;
-struct SecureDigitalStorageV;
-struct FrameBufferV;
+struct BoardConfig;
 
-auto board_config_new(rust::Vec<uint16_t> pins, rust::Vec<GpioDriverV> gpio_drivers,
-                      rust::Vec<UartChannelV> uart_channels, rust::Vec<SecureDigitalStorageV> sd_cards,
-                      rust::Vec<FrameBufferV> frame_buffers) -> std::unique_ptr<OpaqueBoardConfig>;
+auto board_config_new(const BoardConfig& config) -> std::unique_ptr<OpaqueBoardConfig>;
 
 #endif // LIBSMCE_RS_BOARD_CONFIG_HXX

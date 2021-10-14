@@ -10,10 +10,10 @@ use std::{
 use smce_rs::{
     board::{Board, Status},
     board_config::SecureDigitalStorage,
-    board_config::{AnalogDriver, BoardConfig, DigitalDriver, GpioDriver, UartChannel},
+    board_config::{BoardConfig, GpioDriver, UartChannel},
     board_view::GpioPin,
     sketch::Sketch,
-    sketch_config::{Library, SketchConfig},
+    sketch_config::{PluginManifest, SketchConfig},
     toolchain::BuildLogReader,
     toolchain::Toolchain,
 };
@@ -113,25 +113,13 @@ fn boardview_gpio() -> anyhow::Result<()> {
             gpio_drivers: vec![
                 GpioDriver {
                     pin_id: 0,
-                    digital_driver: Some(DigitalDriver {
-                        read: true,
-                        write: false,
-                    }),
-                    analog_driver: Some(AnalogDriver {
-                        read: true,
-                        write: false,
-                    }),
+                    allow_read: true,
+                    allow_write: false,
                 },
                 GpioDriver {
                     pin_id: 2,
-                    digital_driver: Some(DigitalDriver {
-                        read: false,
-                        write: true,
-                    }),
-                    analog_driver: Some(AnalogDriver {
-                        read: false,
-                        write: true,
-                    }),
+                    allow_read: false,
+                    allow_write: false,
                 },
             ],
             ..Default::default()
@@ -207,10 +195,7 @@ fn remote_preproc_lib() -> anyhow::Result<()> {
     let _ = build_sketch(
         "./tests/sketches/remote_pp",
         SketchConfig {
-            preproc_libs: vec![Library::RemoteArduinoLibrary {
-                name: "MQTT".into(),
-                version: "".into(),
-            }],
+            legacy_libs: vec!["MQTT".into()],
             ..Default::default()
         },
     )?;
@@ -222,16 +207,7 @@ fn wifi_intended_use() -> anyhow::Result<()> {
     let _ = build_sketch(
         "./tests/sketches/wifi",
         SketchConfig {
-            preproc_libs: vec![
-                Library::RemoteArduinoLibrary {
-                    name: "MQTT".into(),
-                    version: "".into(),
-                },
-                Library::RemoteArduinoLibrary {
-                    name: "WiFi".into(),
-                    version: "".into(),
-                },
-            ],
+            legacy_libs: vec!["MQTT".into(), "WiFi".into()],
             ..Default::default()
         },
     )?;
@@ -243,9 +219,12 @@ fn patched_lib() -> anyhow::Result<()> {
     let sketch = build_sketch(
         "./tests/sketches/patch",
         SketchConfig {
-            complink_libs: vec![Library::LocalArduinoLibrary {
-                root_dir: fs::canonicalize("./tests/patches/ESP32_analogRewrite")?,
-                patch_for: "ESP32 AnalogWrite".into(),
+            plugins: vec![PluginManifest {
+                uri: "https://github.com/platisd/smartcar_shield/archive/refs/tags/7.0.1.tar.gz"
+                    .into(),
+                patch_uri: fs::canonicalize("./tests/patches/ESP32_analogRewrite")
+                    .map(|st| st.to_string_lossy().into())?,
+                ..Default::default()
             }],
             ..Default::default()
         },
@@ -257,11 +236,8 @@ fn patched_lib() -> anyhow::Result<()> {
         &BoardConfig {
             gpio_drivers: vec![GpioDriver {
                 pin_id: 0,
-                analog_driver: Some(AnalogDriver {
-                    read: false,
-                    write: true,
-                }),
-                digital_driver: None,
+                allow_read: false,
+                allow_write: true,
             }],
             ..Default::default()
         },
@@ -280,10 +256,7 @@ fn sdcard() -> anyhow::Result<()> {
     let sketch = build_sketch(
         "./tests/sketches/sd_fs",
         SketchConfig {
-            preproc_libs: vec![Library::RemoteArduinoLibrary {
-                name: "SD".into(),
-                version: "".into(),
-            }],
+            legacy_libs: vec!["SD".into()],
             ..Default::default()
         },
     )?
@@ -305,14 +278,11 @@ fn sdcard() -> anyhow::Result<()> {
         &BoardConfig {
             gpio_drivers: vec![GpioDriver {
                 pin_id: 0,
-                analog_driver: None,
-                digital_driver: Some(DigitalDriver {
-                    read: false,
-                    write: true,
-                }),
+                allow_read: false,
+                allow_write: true,
             }],
             sd_cards: vec![SecureDigitalStorage {
-                root_dir: root_dir.clone(),
+                root_dir: root_dir.clone().to_string_lossy().into(),
                 cspin: 0,
             }],
             ..Default::default()

@@ -26,7 +26,6 @@ use std::{env, io, thread};
 use smce_rs::board::Board;
 use smce_rs::board_config::{BoardConfig, SecureDigitalStorage, UartChannel};
 use smce_rs::sketch::Sketch;
-use smce_rs::sketch_config::Library::RemoteArduinoLibrary;
 use smce_rs::sketch_config::SketchConfig;
 
 use anyhow::anyhow;
@@ -34,8 +33,10 @@ use smce_rs::toolchain::Toolchain;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
-
     println!("{:?}", args);
+
+    let count = args.len();
+    println!("{}", count);
 
     if args.len() != 3 {
         return Err(anyhow!(
@@ -45,20 +46,12 @@ fn main() -> anyhow::Result<()> {
 
     let home = PathBuf::from(env!("SMCE_TEST_HOME"));
 
+    println!("{}", home.display());
+
     let mut sketch = Sketch::new(
         &PathBuf::from(args[2].clone()),
         SketchConfig {
-            fqbn: args[1].clone(),
-            preproc_libs: vec![
-                RemoteArduinoLibrary {
-                    name: "MQTT".into(),
-                    version: "2.5.0".into(),
-                },
-                RemoteArduinoLibrary {
-                    name: "WiFi".into(),
-                    version: "1.2.7".into(),
-                },
-            ],
+            legacy_libs: vec!["MQTT@2.5.0".into(), "WiFi@1.2.7".into()],
             ..Default::default()
         },
     )

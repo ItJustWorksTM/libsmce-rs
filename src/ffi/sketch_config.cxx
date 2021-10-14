@@ -20,42 +20,41 @@
 #include "smce-rs/src/ffi/definitions.rs"
 #include "sketch_config.hxx"
 
-template<class T>
-auto conf(const T& vec) {
+template <class T> auto conf(const T& vec) {
     auto ret = std::vector<std::string>{};
     std::transform(vec.begin(), vec.end(), std::back_inserter(ret),
                    [](const auto& str) { return std::string{str}; });
     return ret;
 }
 
-auto conf(const LibraryV& libs) {
-    auto ret = std::vector<smce::SketchConfig::Library>{};
-    std::transform(libs.free.begin(), libs.free.end(), std::back_inserter(ret), [](const auto& free) {
-        return smce::SketchConfig::FreestandingLibrary{
-            std::string{free.include_dir}, std::string{free.include_dir}, conf(free.compile_defs)};
-    });
-    std::transform(libs.remote.begin(), libs.remote.end(), std::back_inserter(ret), [](const auto& remote) {
-        return smce::SketchConfig::RemoteArduinoLibrary{std::string{remote.name},
-                                                        std::string{remote.version}};
-    });
-    std::transform(libs.local.begin(), libs.local.end(), std::back_inserter(ret), [](const auto& local) {
-        return smce::SketchConfig::LocalArduinoLibrary{
-            std::string{local.root_dir.data(), local.root_dir.size()}, std::string{local.patch_for}};
-    });
-    return ret;
-}
-
-auto sketch_config_new(rust::Str fqbn, rust::Slice<const rust::String> extra_board_uris,
-                       LibraryV preproc_libs, LibraryV complink_libs,
-                       rust::Slice<const rust::String> extra_compile_defs,
-                       rust::Slice<const rust::String> extra_compile_opts)
-    -> std::unique_ptr<OpaqueSketchConfig> {
+auto sketch_config_new(const SketchConfig& config) -> std::unique_ptr<OpaqueSketchConfig> {
     auto ret = smce::SketchConfig{};
-    ret.fqbn = std::string{fqbn};
-    ret.extra_board_uris = conf(extra_board_uris);
-    ret.preproc_libs = conf(preproc_libs);
-    ret.complink_libs = conf(complink_libs);
-    ret.extra_compile_defs = conf(extra_compile_defs);
-    ret.extra_compile_opts = conf(extra_compile_opts);
+    ret.fqbn = "fuckyou";
+    ret.extra_board_uris = conf(config.extra_board_uris);
+
+    std::transform(config.legacy_libs.begin(), config.legacy_libs.end(),
+                   std::back_inserter(ret.legacy_preproc_libs), [](const auto& lib) {
+                       return smce::SketchConfig::ArduinoLibrary{.name = std::string{lib}, .version = ""};
+                   });
+
+    ret.plugins = [&] {
+        auto re = std::vector<smce::PluginManifest>{};
+        for (const auto& plugin : config.plugins) {
+            re.push_back(
+                smce::PluginManifest{.name = std::string{plugin.name},
+                                     .version = std::string{plugin.version},
+                                     .depends = conf(plugin.depends),
+                                     .needs_devices = conf(plugin.depends),
+                                     .uri = std::string{plugin.uri},
+                                     .patch_uri = std::string{plugin.patch_uri},
+                                     .defaults = static_cast<smce::PluginManifest::Defaults>(plugin.defaults),
+                                     .incdirs = conf(plugin.incdirs),
+                                     .sources = conf(plugin.sources),
+                                     .linkdirs = conf(plugin.linkdirs),
+                                     .linklibs = conf(plugin.linklibs)});
+        }
+        return re;
+    }();
+
     return std::make_unique<OpaqueSketchConfig>(ret);
 }

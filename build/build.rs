@@ -82,6 +82,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let resources_dir = out_dir;
 
+    
+
     println!("cargo:rustc-env=SMCE_TEST_HOME={}", resources_dir.display());
     println!("cargo:test_home={}", resources_dir.display());
 

@@ -58,65 +58,64 @@ pub mod ffi {
     }
 
     // Sketch Config
-    pub(crate) struct FreestandingLibraryV<'a> {
-        pub include_dir: &'a str,
-        pub archive_path: &'a str,
-        pub compile_defs: &'a Vec<String>,
+    #[derive(Debug, Clone, Default)]
+    pub struct PluginManifest {
+        pub name: String,
+        pub version: String,
+        pub depends: String,
+        pub needs_devices: String,
+        pub uri: String,
+        pub patch_uri: String,
+        pub defaults: u8,
+        pub incdirs: Vec<String>,
+        pub sources: Vec<String>,
+        pub linkdirs: Vec<String>,
+        pub linklibs: Vec<String>,
     }
 
-    pub(crate) struct RemoteArduinoLibraryV<'a> {
-        pub name: &'a String,
-        pub version: &'a String,
-    }
-
-    pub(crate) struct LocalArduinoLibraryV<'a> {
-        pub root_dir: &'a str,
-        pub patch_for: &'a String,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct LibraryV<'a> {
-        pub free: Vec<FreestandingLibraryV<'a>>,
-        pub remote: Vec<RemoteArduinoLibraryV<'a>>,
-        pub local: Vec<LocalArduinoLibraryV<'a>>,
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct DigitalDriver {
-        pub read: bool,
-        pub write: bool,
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct AnalogDriver {
-        pub read: bool,
-        pub write: bool,
+    #[derive(Debug, Clone, Default)]
+    pub struct SketchConfig {
+        pub extra_board_uris: Vec<String>,
+        pub legacy_libs: Vec<String>,
+        pub plugins: Vec<PluginManifest>,
+        pub extra_compile_defs: Vec<String>,
+        pub extra_compile_opts: Vec<String>,
     }
 
     // Board config
-    pub(crate) struct GpioDriverV {
+    #[derive(Debug, Default, Clone)]
+    pub struct GpioDriver {
         pub pin_id: u16,
-        pub digital_driver: *const DigitalDriver,
-        pub analog_driver: *const AnalogDriver,
+        pub allow_read: bool,
+        pub allow_write: bool,
     }
 
-    pub(crate) struct UartChannelV {
-        pub rx_pin_override: *const u16,
-        pub tx_pin_override: *const u16,
+    #[derive(Debug, Clone)]
+    pub struct UartChannel {
         pub baud_rate: u16,
         pub rx_buffer_length: usize,
         pub tx_buffer_length: usize,
         pub flushing_threshold: usize,
     }
 
-    pub(crate) struct SecureDigitalStorageV<'a> {
-        pub(crate) cspin: u16,
-        pub(crate) root_dir: &'a str,
+    #[derive(Debug, Clone)]
+    pub struct SecureDigitalStorage {
+        pub cspin: u16,
+        pub root_dir: String,
     }
 
-    pub(crate) struct FrameBufferV {
-        pub(crate) key: usize,
-        pub(crate) direction: bool, // true = in false = out
+    #[derive(Debug, Clone, Default)]
+    pub struct FrameBuffer {
+        pub key: usize,
+        pub allow_write: bool,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    pub struct BoardConfig {
+        pub gpio_drivers: Vec<GpioDriver>,
+        pub uart_channels: Vec<UartChannel>,
+        pub sd_cards: Vec<SecureDigitalStorage>,
+        pub frame_buffers: Vec<FrameBuffer>,
     }
 
     unsafe extern "C++" {
@@ -135,12 +134,7 @@ pub mod ffi {
         pub(crate) type OpaqueSketchConfig;
 
         pub(crate) unsafe fn sketch_config_new(
-            fqbn: &str,
-            extra_board_uris: &[String],
-            preproc_libs: LibraryV,
-            complink_libs: LibraryV,
-            extra_compile_defs: &[String],
-            extra_compile_opts: &[String],
+            config: &SketchConfig,
         ) -> UniquePtr<OpaqueSketchConfig>;
 
         include!("uuid.hxx");
@@ -169,13 +163,8 @@ pub mod ffi {
         include!("board_config.hxx");
 
         type OpaqueBoardConfig;
-        pub(crate) unsafe fn board_config_new(
-            pins: Vec<u16>,
-            gpio_drivers: Vec<GpioDriverV>,
-            uart_channels: Vec<UartChannelV>,
-            sd_cards: Vec<SecureDigitalStorageV>,
-            frame_buffers: Vec<FrameBufferV>,
-        ) -> UniquePtr<OpaqueBoardConfig>;
+        pub(crate) unsafe fn board_config_new(config: &BoardConfig)
+            -> UniquePtr<OpaqueBoardConfig>;
 
         include!("board.hxx");
 

@@ -16,9 +16,7 @@
  *
  */
 
-pub use definitions::{AnalogDriver, DigitalDriver};
-
 #[doc(hidden)]
-pub(crate) use definitions::*;
+pub use definitions::*;
 #[doc(hidden)]
 pub mod definitions;
