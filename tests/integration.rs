@@ -220,10 +220,14 @@ fn patched_lib() -> anyhow::Result<()> {
         "./tests/sketches/patch",
         SketchConfig {
             plugins: vec![PluginManifest {
-                uri: "https://github.com/platisd/smartcar_shield/archive/refs/tags/7.0.1.tar.gz"
+                name: "ESP32_AnalogWrite".into(),
+                version: "0.2".into(),
+                uri: "https://github.com/ERROPiX/ESP32_AnalogWrite/archive/refs/tags/0.2.zip"
                     .into(),
-                patch_uri: fs::canonicalize("./tests/patches/ESP32_analogRewrite")
-                    .map(|st| st.to_string_lossy().into())?,
+                patch_uri: format!(
+                    "file://{}",
+                    fs::canonicalize("./tests/patches/ESP32_analogRewrite")?.display()
+                ),
                 ..Default::default()
             }],
             ..Default::default()
