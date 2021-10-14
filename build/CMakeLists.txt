@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.20)
 project(smce-rs)
 
 find_package(Threads REQUIRED)
-find_package(SMCE REQUIRED)
+find_package(SMCE 1.4 REQUIRED)
 
 get_target_property(SMCE_INCLUDE_DIRS SMCE::SMCE INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(SMCE_IMPORTED_LOCATION SMCE::SMCE LOCATION)

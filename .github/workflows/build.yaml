@@ -1,6 +1,9 @@
 name: Build & Test
 
 on: [push, pull_request]
+env:
+  LIBSMCE_TAG: v1.4.0
+  LIBSMCE_VERSION: 1.4
 
 jobs:
   Linux:
@@ -18,7 +21,7 @@ jobs:
           brew install arduino-cli
           arduino-cli core install arduino:avr
           arduino-cli lib install MQTT SD WiFi
-          wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Linux-x86_64-GNU.sh
+          wget -O libsmce.sh "https://github.com/ItJustWorksTM/libSMCE/releases/download/${LIBSMCE_TAG}/libSMCE-${LIBSMCE_VERSION}-Linux-x86_64-GNU.sh"
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr --skip-license --exclude-subdir
       - uses: actions/checkout@v2
@@ -53,7 +56,7 @@ jobs:
           brew install ninja arduino-cli
           arduino-cli core install arduino:avr
           arduino-cli lib install MQTT SD WiFi
-          wget -O libsmce.sh https://github.com/ItJustWorksTM/libSMCE/releases/download/v1.2.4/libSMCE-1.2.4-Darwin-x86_64-AppleClang.sh
+          wget -O libsmce.sh "https://github.com/ItJustWorksTM/libSMCE/releases/download/${LIBSMCE_TAG}/libSMCE-${LIBSMCE_VERSION}-Darwin-x86_64-AppleClang.sh"
           chmod +x libsmce.sh
           sudo ./libsmce.sh --prefix=/usr/local --skip-license --exclude-subdir
       - uses: actions/checkout@v2
