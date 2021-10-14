@@ -119,7 +119,7 @@ fn boardview_gpio() -> anyhow::Result<()> {
                 GpioDriver {
                     pin_id: 2,
                     allow_read: false,
-                    allow_write: false,
+                    allow_write: true,
                 },
             ],
             ..Default::default()
