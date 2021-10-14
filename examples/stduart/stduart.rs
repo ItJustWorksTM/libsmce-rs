@@ -35,9 +35,6 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 
-    let count = args.len();
-    println!("{}", count);
-
     if args.len() != 3 {
         return Err(anyhow!(
             "Usage:  <fully-qualified-board-name> <path-to-sketch>"
@@ -45,8 +42,6 @@ fn main() -> anyhow::Result<()> {
     }
 
     let home = PathBuf::from(env!("SMCE_TEST_HOME"));
-
-    println!("{}", home.display());
 
     let mut sketch = Sketch::new(
         &PathBuf::from(args[2].clone()),

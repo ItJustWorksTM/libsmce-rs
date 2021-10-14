@@ -80,22 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", directive);
     }
 
-    let resources_dir = out_dir;
-
-    
-
-    println!("cargo:rustc-env=SMCE_TEST_HOME={}", resources_dir.display());
-    println!("cargo:test_home={}", resources_dir.display());
-
-    println!(
-        "cargo:rtresources={}",
-        resources_dir.join("RtResources").display()
-    );
-
-    println!(
-        "cargo:rtresources_ark={}",
-        resources_dir.join("SMCE_Resources.zip").display()
-    );
+    println!("cargo:rustc-env=SMCE_TEST_HOME={}", out_dir.display());
 
     for path in fs::read_dir(&Path::new("src/ffi")).unwrap() {
         let path = path.unwrap();

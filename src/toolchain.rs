@@ -17,11 +17,14 @@
  */
 
 use std::fmt::Debug;
-use std::io;
-use std::io::Read;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::{cell::UnsafeCell, ffi::OsStr};
+use std::{cell::UnsafeCell, process::Command};
+use std::{
+    fs::DirBuilder,
+    sync::atomic::{AtomicBool, Ordering},
+};
+use std::{fs::File, io::Read};
+use std::{io, path::PathBuf};
+use std::{io::Write, sync::Arc};
 
 use cxx::UniquePtr;
 use thiserror::Error;
@@ -82,6 +85,7 @@ unsafe impl Sync for ToolchainInternal {}
 
 pub struct Toolchain {
     internal: Arc<ToolchainInternal>,
+    home_dir: PathBuf,
     // Toolchain is not intended to be thread safe so explicitly block Sync
     _unsync: PhantomData<*const ()>,
 }
@@ -112,23 +116,20 @@ impl Read for BuildLogReader {
 }
 
 impl Toolchain {
-    pub fn new<S: AsRef<OsStr> + ?Sized>(
-        resource_dir: &S,
+    pub fn new<S: Into<PathBuf>>(
+        home_dir: S,
     ) -> Result<(Toolchain, BuildLogReader), ToolchainError> {
+        let home_dir = home_dir.into();
+
         let internal = Arc::new(ToolchainInternal {
-            internal: UnsafeCell::new(unsafe {
-                let mut tc = toolchain_new(resource_dir.as_ref().to_str().unwrap_or(""));
-                let res: Result<(), ToolchainError> =
-                    tc.pin_mut().check_suitable_environment().into();
-                res?;
-                tc
-            }),
+            internal: UnsafeCell::new(unsafe { toolchain_new(home_dir.to_str().unwrap_or("")) }),
             finished: AtomicBool::new(false),
         });
 
         Ok((
             Toolchain {
                 internal: internal.clone(),
+                home_dir,
                 _unsync: PhantomData,
             },
             BuildLogReader { internal },
@@ -136,6 +137,37 @@ impl Toolchain {
     }
 
     pub fn compile(self, sketch: &mut Sketch) -> Result<(), ToolchainError> {
+        let resource_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/SMCE_Resources.zip"));
+
+        unsafe {
+            (&mut *(self.internal.internal.get()))
+                .pin_mut()
+                .check_suitable_environment();
+        }
+
+        if !self.home_dir.exists() {
+            DirBuilder::new()
+                .recursive(true)
+                .create(&self.home_dir)
+                .unwrap();
+        }
+
+        let mut zip = self.home_dir.clone();
+        zip.push("SMCE_Resources.zip");
+
+        let mut file = File::create(&zip).unwrap();
+
+        file.write_all(resource_bytes).unwrap();
+
+        Command::new("cmake")
+            .arg("-E")
+            .arg("tar")
+            .arg("xf")
+            .arg(&zip)
+            .current_dir(&self.home_dir)
+            .output()
+            .unwrap();
+
         let ret = unsafe {
             (*self.internal.internal.get())
                 .pin_mut()

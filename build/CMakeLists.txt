@@ -37,7 +37,6 @@ message("cargo:rustc-link-lib=dylib=SMCE")
 
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E tar xf "${SMCE_RESOURCES_ARK}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${SMCE_RESOURCES_ARK}" "$ENV{OUT_DIR}"
         WORKING_DIRECTORY "$ENV{OUT_DIR}"
 )

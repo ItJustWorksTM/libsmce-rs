@@ -28,6 +28,7 @@ use crate::board_view::{
 use crate::ffi::{board_new, ExitInfo, OpaqueBoard, OpaqueBoardStatus, OpaqueBoardView};
 use crate::sketch::Sketch;
 
+#[derive(Default)]
 pub struct Board {
     internal: Option<(UnsafeCell<UniquePtr<OpaqueBoard>>, BoardView)>,
 }
@@ -134,12 +135,6 @@ impl Board {
         } else {
             None
         }
-    }
-}
-
-impl Default for Board {
-    fn default() -> Self {
-        Self { internal: None }
     }
 }
 
