@@ -44,7 +44,11 @@ auto OpaqueBoard::tick() -> ExitInfo {
     return {exited, exited};
 }
 
-auto OpaqueBoard::status() const -> OpaqueBoardStatus { return static_cast<OpaqueBoardStatus>(internal.status()); }
+auto OpaqueBoard::status() const -> OpaqueBoardStatus {
+    return static_cast<OpaqueBoardStatus>(internal.status());
+}
+
+auto OpaqueBoard::prepare() -> bool { return internal.prepare(); }
 
 auto OpaqueBoard::start() -> bool {
     exited = false;

@@ -46,7 +46,8 @@ fn tick_crash() -> anyhow::Result<()> {
     let sketch = build_sketch("./tests/sketches/uncaught", Default::default())?.0;
 
     let mut board = Board::new();
-    let handle = board.start(&Default::default(), &sketch)?;
+    let handle = board.prepare(&Default::default(), &sketch)?;
+    assert!(handle.start());
 
     for _ in 0..10 {
         if handle.tick().is_err() {
@@ -65,7 +66,8 @@ fn suspend_resume() -> anyhow::Result<()> {
     let sketch = build_sketch("./tests/sketches/noop", Default::default())?.0;
 
     let mut board = Board::new();
-    let handle = board.start(&Default::default(), &sketch)?;
+    let handle = board.prepare(&Default::default(), &sketch)?;
+    assert!(handle.start());
 
     assert_eq!(handle.status(), Status::Running);
     assert!(handle.suspend());
@@ -102,7 +104,7 @@ fn boardview_gpio() -> anyhow::Result<()> {
     let sketch = build_sketch("./tests/sketches/pins", Default::default())?.0;
 
     let mut board = Board::new();
-    let handle = board.start(
+    let handle = board.prepare(
         &BoardConfig {
             gpio_drivers: vec![
                 GpioDriver {
@@ -120,6 +122,7 @@ fn boardview_gpio() -> anyhow::Result<()> {
         },
         &sketch,
     )?;
+    assert!(handle.start());
 
     let bv = handle.view();
 
@@ -149,13 +152,14 @@ fn uart() -> anyhow::Result<()> {
     let sketch = build_sketch("./tests/sketches/uart", Default::default())?.0;
 
     let mut board = Board::new();
-    let handle = board.start(
+    let handle = board.prepare(
         &BoardConfig {
             uart_channels: vec![UartChannel::default()],
             ..Default::default()
         },
         &sketch,
     )?;
+    assert!(handle.start());
 
     let mut uart0 = &handle.view().uart_channels[0];
 
@@ -230,7 +234,7 @@ fn patched_lib() -> anyhow::Result<()> {
     .0;
 
     let mut board = Board::new();
-    let handle = board.start(
+    let handle = board.prepare(
         &BoardConfig {
             gpio_drivers: vec![GpioDriver {
                 pin_id: 0,
@@ -241,6 +245,7 @@ fn patched_lib() -> anyhow::Result<()> {
         },
         &sketch,
     )?;
+    assert!(handle.start());
 
     thread::sleep(Duration::from_millis(1));
 
@@ -272,7 +277,7 @@ fn sdcard() -> anyhow::Result<()> {
     fs::create_dir_all(&root_dir)?;
 
     let mut board = Board::new();
-    let handle = board.start(
+    let handle = board.prepare(
         &BoardConfig {
             gpio_drivers: vec![GpioDriver {
                 pin_id: 0,
@@ -287,6 +292,7 @@ fn sdcard() -> anyhow::Result<()> {
         },
         &sketch,
     )?;
+    assert!(handle.start());
 
     assert!(test_digital_pin_delayable(&handle.view().pins[0], true));
     handle.stop();

@@ -77,7 +77,7 @@ fn main() -> anyhow::Result<()> {
     println!("Done");
 
     let mut board = Board::new();
-    let handle = board.start(
+    let handle = board.prepare(
         &BoardConfig {
             uart_channels: vec![UartChannel {
                 tx_buffer_length: 512,
@@ -92,6 +92,8 @@ fn main() -> anyhow::Result<()> {
         },
         &sketch,
     )?;
+
+    assert!(handle.start());
 
     assert_eq!(handle.view().uart_channels.len(), 1);
 

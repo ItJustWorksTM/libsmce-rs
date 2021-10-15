@@ -16,7 +16,11 @@
  *
  */
 
-#![allow(clippy::missing_safety_doc, clippy::needless_lifetimes)]
+#![allow(
+    clippy::missing_safety_doc,
+    clippy::needless_lifetimes,
+    clippy::derive_impls
+)]
 
 pub use ffi::*;
 
@@ -35,6 +39,7 @@ pub mod ffi {
     pub(crate) enum OpaqueBoardStatus {
         Clean,
         Configured,
+        Prepared,
         Running,
         Suspended,
         Stopped,
@@ -172,6 +177,7 @@ pub mod ffi {
         pub(crate) unsafe fn board_new() -> UniquePtr<OpaqueBoard>;
         pub(crate) unsafe fn tick(self: Pin<&mut OpaqueBoard>) -> ExitInfo;
         pub(crate) unsafe fn status(self: &OpaqueBoard) -> OpaqueBoardStatus;
+        pub(crate) unsafe fn prepare(self: Pin<&mut OpaqueBoard>) -> bool;
         pub(crate) unsafe fn start(self: Pin<&mut OpaqueBoard>) -> bool;
         pub(crate) unsafe fn resume(self: Pin<&mut OpaqueBoard>) -> bool;
         pub(crate) unsafe fn suspend(self: Pin<&mut OpaqueBoard>) -> bool;
@@ -205,6 +211,7 @@ pub mod ffi {
         ) -> UniquePtr<OpaqueFramebuffer>;
         pub(crate) unsafe fn clone(self: Pin<&mut OpaqueBoardView>) -> UniquePtr<OpaqueBoardView>;
 
+        // TODO: maybe collapse these in a single digital/analog write
         pub(crate) type OpaqueVirtualPin;
         pub(crate) unsafe fn is_digital(self: Pin<&mut OpaqueVirtualPin>) -> bool;
         pub(crate) unsafe fn is_analog(self: Pin<&mut OpaqueVirtualPin>) -> bool;

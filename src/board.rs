@@ -44,7 +44,7 @@ impl Board {
         Self { internal: None }
     }
 
-    pub fn start(
+    pub fn prepare(
         &mut self,
         config: &BoardConfig,
         sketch: &Sketch,
@@ -66,8 +66,8 @@ impl Board {
         // attach
         assert!(unsafe { board.pin_mut().attach_sketch(&sketch.internal) });
 
-        // start
-        assert!(unsafe { board.pin_mut().start() });
+        // prepare
+        assert!(unsafe { board.pin_mut().prepare() });
 
         let mut bv: UniquePtr<OpaqueBoardView> = unsafe { board.pin_mut().view() };
 
@@ -150,6 +150,10 @@ impl BoardHandle<'_> {
     #[doc(hidden)]
     fn internal(&self) -> &(UnsafeCell<UniquePtr<OpaqueBoard>>, BoardView) {
         self.board.internal.as_ref().unwrap()
+    }
+
+    pub fn start(&self) -> bool {
+        unsafe { (*self.internal().0.get()).pin_mut().start() }
     }
 
     pub fn status(&self) -> Status {

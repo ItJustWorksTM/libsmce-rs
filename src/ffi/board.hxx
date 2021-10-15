@@ -41,6 +41,7 @@ struct OpaqueBoard {
     auto attach_sketch(const std::unique_ptr<OpaqueSketch>& sketch) -> bool;
     auto tick() -> ExitInfo;
     auto status() const -> OpaqueBoardStatus;
+    auto prepare() -> bool;
     auto start() -> bool;
     auto suspend() -> bool;
     auto resume() -> bool;
