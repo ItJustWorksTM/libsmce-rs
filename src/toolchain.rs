@@ -36,10 +36,10 @@ use std::marker::PhantomData;
 #[derive(Clone, Copy, Error, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum ToolchainError {
+    #[error("Failed to extract Resources")]
+    ResDirExtract,
     #[error("Resource directory does not exist")]
     ResdirAbsent,
-    #[error("Resource directory is a file")]
-    ResdirFile,
     #[error("Resource directory empty")]
     ResdirEmpty,
     #[error("CMake not found in PATH")]
@@ -63,7 +63,6 @@ impl Into<Result<(), ToolchainError>> for OpaqueToolchainResult {
         Err(match self {
             OpaqueToolchainResult::Ok => return Ok(()),
             OpaqueToolchainResult::ResdirAbsent => ToolchainError::ResdirAbsent,
-            OpaqueToolchainResult::ResdirFile => ToolchainError::ResdirFile,
             OpaqueToolchainResult::ResdirEmpty => ToolchainError::ResdirEmpty,
             OpaqueToolchainResult::CmakeNotFound => ToolchainError::CmakeNotFound,
             OpaqueToolchainResult::CmakeUnknownOutput => ToolchainError::CmakeUnknownOutput,
@@ -149,15 +148,16 @@ impl Toolchain {
             DirBuilder::new()
                 .recursive(true)
                 .create(&self.home_dir)
-                .unwrap();
+                .map_err(|_| ToolchainError::ResdirAbsent)?;
         }
 
         let mut zip = self.home_dir.clone();
         zip.push("SMCE_Resources.zip");
 
-        let mut file = File::create(&zip).unwrap();
+        let mut file = File::create(&zip).map_err(|_| ToolchainError::ResDirExtract)?;
 
-        file.write_all(resource_bytes).unwrap();
+        file.write_all(resource_bytes)
+            .map_err(|_| ToolchainError::ResDirExtract)?;
 
         Command::new("cmake")
             .arg("-E")
@@ -166,7 +166,10 @@ impl Toolchain {
             .arg(&zip)
             .current_dir(&self.home_dir)
             .output()
-            .unwrap();
+            .map_err(|err| match err.kind() {
+                std::io::ErrorKind::NotFound => ToolchainError::CmakeNotFound,
+                _ => ToolchainError::ResDirExtract,
+            })?;
 
         let ret = unsafe {
             (*self.internal.internal.get())

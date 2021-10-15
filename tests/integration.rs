@@ -35,12 +35,6 @@ fn build_sketch(
 }
 
 #[test]
-fn suitable_env() {
-    assert!(Toolchain::new(TEST_HOME).is_ok());
-    assert!(Toolchain::new("_non_existent_").is_err());
-}
-
-#[test]
 fn noop_compile() -> anyhow::Result<()> {
     let sketch = build_sketch("./tests/sketches/noop", Default::default())?.0;
     assert!(sketch.compiled());
